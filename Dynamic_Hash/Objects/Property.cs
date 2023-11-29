@@ -1,5 +1,6 @@
 ﻿using QuadTree.Hashing;
 using System.Collections;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Dynamic_Hash.Objects
@@ -38,7 +39,7 @@ namespace Dynamic_Hash.Objects
 
         private string EditDescription(string desc)
         {
-            if (desc.Length <= MAX_DESC_LENGTH)
+            if (desc.Length < MAX_DESC_LENGTH)
             {
                 //will add '*' to the length of 15
                 return desc.PadRight(MAX_DESC_LENGTH, '*');
@@ -85,9 +86,17 @@ namespace Dynamic_Hash.Objects
 
         public BitArray getHash()
         {
-            byte[] hash = Encoding.Default.GetBytes(RegisterNumber.ToString());
+            /*byte[] hash = Encoding.UTF8.GetBytes(RegisterNumber.ToString());
             var bittarray = new BitArray(hash);
-            return bittarray;
+            return bittarray;*/
+
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] inputBytes = Encoding.Default.GetBytes(RegisterNumber.ToString());
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+
+                return new BitArray(hashBytes);
+            }
         }
 
         public Property createInstanceOfClass()
@@ -147,7 +156,7 @@ namespace Dynamic_Hash.Objects
 
                 byte descriptionLength = reader.ReadByte();
                 byte[] descriptionBytes = reader.ReadBytes(descriptionLength);
-                Description = Encoding.Default.GetString(descriptionBytes);
+                Description = Encoding.UTF8.GetString(descriptionBytes);
 
                 double startLongitude = reader.ReadDouble();
                 double startLatitude = reader.ReadDouble();
@@ -164,6 +173,26 @@ namespace Dynamic_Hash.Objects
                     Lands.Add(plotId);
                 }
             }
+        }
+
+        public string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append($"RegisterNumber: {RegisterNumber}, ");
+            sb.Append($"Description: {Description}, ");
+            sb.Append($"Coordinates: ({Coordinates.Item1.LongitudeStart}, {Coordinates.Item1.LatitudeStart}), ");
+            sb.Append($"({Coordinates.Item2.LongitudeEnd}, {Coordinates.Item2.LatitudeEnd}), ");
+            sb.Append("Lands: [");
+
+            foreach (int landId in Lands)
+            {
+                sb.Append($"{landId}, ");
+            }
+
+            sb.Append("]");
+
+            return sb.ToString();
         }
 
 

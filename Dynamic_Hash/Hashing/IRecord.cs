@@ -9,6 +9,7 @@ namespace QuadTree.Hashing
         public byte[] toByteArray();
         //reads object from array of bytes
         public void fromByteArray(byte[] byteArray);
+        public string ToString();
 
     }
 }

@@ -14,13 +14,13 @@ namespace Dynamic_Hash.Hashing
         //number of blocks for the List
         private int _bf;
 
-        public Block(int blockFactor) 
+        public Block(int blockFactor)
         {
             BlockFactor = blockFactor;
             TypeOfData = typeof(T);
             Records = new List<T>(BlockFactor);
             ValidRecordsCount = 0;
-            
+
             for (int i = 0; i < BlockFactor; i++)
             {
                 Records.Add((T)Activator.CreateInstance(TypeOfData));
@@ -53,7 +53,7 @@ namespace Dynamic_Hash.Hashing
 
         public bool Insert(T record)
         {
-            if (ValidRecordsCount < BlockFactor) 
+            if (ValidRecordsCount < BlockFactor)
             {
                 Records[ValidRecordsCount++] = record;
                 return true;
@@ -107,5 +107,24 @@ namespace Dynamic_Hash.Hashing
                 return stream.ToArray();
             }
         }
+
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append($"[{ValidRecordsCount}/{BlockFactor} records,");
+
+            for (int i = 0; i < ValidRecordsCount; i++)
+            {
+
+                T record = Records[i];
+                sb.Append($" record{i + 1}: {record.ToString()}, ");
+            }
+
+            sb.Append("]");
+
+            return sb.ToString();
+        }
+
     }
 }

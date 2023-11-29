@@ -18,10 +18,10 @@ namespace Dynamic_Hash.Trie
 
             //old
             Root = new InternalNode(); //cant switch from internal to external so 2 ext nodes will be created
-            Root.RightNode = new ExternalNode(0, -1);
+            Root.RightNode = new ExternalNode(-1, 0);
             Root.RightNode.Parent = Root;
 
-            Root.LeftNode = new ExternalNode(0, -1);
+            Root.LeftNode = new ExternalNode(-1, 0);
             Root.LeftNode.Parent = Root;
         }
         public InternalNode Root
@@ -74,7 +74,7 @@ namespace Dynamic_Hash.Trie
             {
                 if (currentNode is ExternalNode externalNode)
                 {
-                    level = i;
+                    level = i-1;
                     return externalNode;
                 }
 
