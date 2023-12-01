@@ -10,6 +10,7 @@ namespace Dynamic_Hash.Trie
 {
     internal class Trie
     {
+        //public Node? _root;
         public InternalNode? _root;
 
         public Trie()
@@ -29,6 +30,12 @@ namespace Dynamic_Hash.Trie
             get { return _root; }
             set { _root = value; }
         }
+
+        /*public Node Root
+        {
+            get { return _root; }
+            set { _root = value; }
+        }*/
 
         public ExternalNode? getExternalNode(BitArray bitset, out int level) 
         {
@@ -85,6 +92,44 @@ namespace Dynamic_Hash.Trie
             Trace.WriteLine("Did not find an external node by bitset. ERR");
             return null;
 
+        }
+
+        public ExternalNode findBrother(ExternalNode node) 
+        {
+            if (node.Parent != null) //is root
+            {
+                if (node.Parent.RightNode == node) //Right son i need to return left son
+                {
+                    if (node.Parent.LeftNode is ExternalNode)
+                    {
+                        return (ExternalNode)node.Parent.LeftNode;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                    
+                }
+                else
+                {
+                    if (node.Parent.RightNode is ExternalNode)
+                    {
+                        return (ExternalNode)node.Parent.RightNode;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                    
+                }
+            }
+            else
+            {
+                //cant find brother from root
+                return null;
+            }
+            
+                   
         }
 
     }

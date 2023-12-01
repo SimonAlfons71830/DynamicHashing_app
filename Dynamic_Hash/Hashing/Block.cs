@@ -1,5 +1,7 @@
 ﻿using QuadTree.Hashing;
+using System;
 using System.Text;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Dynamic_Hash.Hashing
 {
@@ -53,12 +55,35 @@ namespace Dynamic_Hash.Hashing
 
         public bool Insert(T record)
         {
+            //TODO : check for duplicates
             if (ValidRecordsCount < BlockFactor)
             {
                 Records[ValidRecordsCount++] = record;
                 return true;
             }
             return false;
+        }
+
+        public bool Remove(T data) 
+        {
+            for (int i = 0; i < ValidRecordsCount; i++)
+            {
+                if (Records.ElementAt(i).MyEquals(data))
+                {
+                    // Swap the found record with the last valid record in the list
+                    T temp = Records[i];
+                    Records[i] = Records[ValidRecordsCount - 1];
+                    Records[ValidRecordsCount - 1] = temp;
+                    //TODO: maybe rewrite the data for empty block (optional)
+
+                    // Decrease the count of valid records
+                    ValidRecordsCount--;
+
+                    return true; // Indicate that a record was moved to the end of the list
+                }
+            }
+            return false; // Indicate that the record was not found
+
         }
 
         public void fromByteArray(byte[] byteArray)

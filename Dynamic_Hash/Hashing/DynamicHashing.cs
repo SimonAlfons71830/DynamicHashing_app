@@ -1,6 +1,7 @@
 ﻿using Dynamic_Hash.Trie;
 using QuadTree.Hashing;
 using System.Collections;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
 
@@ -12,6 +13,7 @@ namespace Dynamic_Hash.Hashing
         private int _blockFactor;
         private FileStream _file;
         private int _blockSize;
+        private List<int> availableIndexes;
 
         public int noOfRecords;
 
@@ -19,6 +21,7 @@ namespace Dynamic_Hash.Hashing
         {
             BlockFactor = blockFactor;
             Trie = new Trie.Trie();
+            availableIndexes = new List<int>();
 
             try
             {
@@ -35,6 +38,8 @@ namespace Dynamic_Hash.Hashing
         public int BlockFactor { get => _blockFactor; set => _blockFactor = value; }
         public FileStream File { get => _file; set => _file = value; }
         internal Trie.Trie Trie { get => _trie; set => _trie = value; }
+        public List<int> AvailableIndexes { get => availableIndexes; set => availableIndexes = value; }
+
         public int BlockSize
         {
             get
@@ -45,6 +50,7 @@ namespace Dynamic_Hash.Hashing
             set => _blockSize = value;
         }
 
+        
 
         public bool Insert(T data) 
         {
@@ -74,10 +80,21 @@ namespace Dynamic_Hash.Hashing
                     Block<T> block = new Block<T>(BlockFactor);
                     block.Insert(data);
 
-                    //nastavenie adresy na koniec suboru
-                    var newIndex = File.Length;
-                    File.SetLength(File.Length + block.getSize());
-                    node.Index = (int)newIndex;
+                    
+                    if (availableIndexes.Count > 0)
+                    {
+                        var newIndex = availableIndexes.ElementAt(0);
+                        availableIndexes.RemoveAt(0);
+                        node.Index = newIndex;
+                    }
+                    else
+                    {
+                        //nastavenie adresy na koniec suboru
+                        var newIndex = File.Length;
+                        File.SetLength(File.Length + block.getSize());
+                        node.Index = (int)newIndex;
+                    }
+
 
                     WriteBackToFile(node.Index, block);
                     noOfRecords++;
@@ -97,6 +114,7 @@ namespace Dynamic_Hash.Hashing
                         WriteBackToFile(node.Index, block);
                         noOfRecords++;
                         node.CountOfRecords++;
+                        Trace.WriteLine("Written to a new address." + block.ToString());
                         return true;
                     }
                     else
@@ -225,7 +243,8 @@ namespace Dynamic_Hash.Hashing
                         }
                         else
                         {
-                            Trace.WriteLine("Hash of new data too short for next level");
+                            Trace.WriteLine("Trie if full.");
+                            return false;
                         }
 
                         if (continueLeft)
@@ -248,18 +267,27 @@ namespace Dynamic_Hash.Hashing
                                 WriteBackToFile(LeftSon.Index, blockLeftSon);
                                 WriteBackToFile(RightSon.Index, blockRightSon);
                                 noOfRecords++;
+                                Trace.WriteLine("Written to a new address." + blockLeftSon.ToString());
+                                Trace.WriteLine("Written to a new address." + blockRightSon.ToString());
+                                LeftSon.CountOfRecords = blockLeftSon.ValidRecordsCount;
+                                RightSon.CountOfRecords = blockRightSon.ValidRecordsCount;
+
                             }
                             else if (LeftSon.CountOfRecords > 0)
                             {
                                 LeftSon.Index = oldFreeIndex;
                                 WriteBackToFile(LeftSon.Index, blockLeftSon);
                                 noOfRecords++;
+                                Trace.WriteLine("Written to a new address." + blockLeftSon.ToString());
+                                LeftSon.CountOfRecords = blockLeftSon.ValidRecordsCount;
                             }
                             else if (RightSon.CountOfRecords > 0)
                             {
                                 RightSon.Index = oldFreeIndex;
                                 WriteBackToFile(RightSon.Index, blockRightSon);
                                 noOfRecords++;
+                                Trace.WriteLine("Written to a new address." + blockRightSon.ToString());
+                                RightSon.CountOfRecords = blockRightSon.ValidRecordsCount;
                             }
 
                             Trace.WriteLine("New Nodes have good amount of records, they have been written to file.");
@@ -275,6 +303,300 @@ namespace Dynamic_Hash.Hashing
             return false;
 
         }
+
+        private void ShortenBranch(ExternalNode node, ExternalNode brotherNode) 
+        {
+            var end = false;
+            while (end)
+            {
+
+                if (end)
+                {
+                    return;
+                }
+                ExternalNode newNode = new ExternalNode(-1, 0);
+
+                var newBlock = new Block<T>(BlockFactor);
+
+                if (node.Index > -1)
+                {
+                    var nodeBlock = ReadBlockFromFile(node.Index);
+                    for (int i = 0; i < nodeBlock.ValidRecordsCount; i++)
+                    {
+                        //TODO: if
+                        if (newBlock.Insert(nodeBlock.Records[i]))
+                        {
+                            newNode.CountOfRecords++;
+                        }
+                        else
+                        {
+                            Trace.WriteLine("Error when shortening the branch.");
+                        }
+
+                    }
+
+                    availableIndexes.Add(node.Index);
+                    node.Index = -1;
+
+                }
+
+                if (brotherNode.Index > -1)
+                {
+                    var brotherBlock = ReadBlockFromFile(brotherNode.Index);
+                    for (int i = 0; i < brotherBlock.ValidRecordsCount; i++)
+                    {
+                        if (newBlock.Insert(brotherBlock.Records[i]))
+                        {
+                            newNode.CountOfRecords++;
+                        }
+                        else
+                        {
+                            Trace.WriteLine("Error when shortening the branch.");
+                        }
+
+
+                    }
+                    availableIndexes.Add(brotherNode.Index);
+                    brotherNode.Index = -1;
+                }
+
+                //TODO: sort
+                var newIndex = availableIndexes.ElementAt(0);
+                availableIndexes.RemoveAt(0);
+
+
+                var Parent = node.Parent;
+
+                newNode.Parent = Parent;
+                if (Parent.Parent.RightNode == Parent)
+                {
+                    Parent.Parent.RightNode = newNode;
+                }
+                else
+                {
+                    Parent.Parent.LeftNode = newNode;
+                }
+
+                newNode.Index = newIndex;
+
+                WriteBackToFile(newNode.Index, newBlock);
+
+                brotherNode = Trie.findBrother(newNode);
+                if (brotherNode != null)
+                {
+                    node = newNode;
+                }
+                else
+                {
+                    end = true;
+                }
+            }
+        }
+
+        public bool Remove(T data) 
+        {
+
+            var pom = Find(data);
+            if (pom == null)
+            {
+                Trace.WriteLine("Data not in file! - Error Remove");
+            }
+
+
+            int level = -1;
+            var dataHash = data.getHash();
+            var node = Trie.getExternalNode(dataHash, out level);
+
+            var block = ReadBlockFromFile(node.Index);
+            if (block.Remove(data))
+            {
+                Trace.WriteLine("succesfully removed:" + data.ToString());
+                node.CountOfRecords--;
+                noOfRecords--;
+                WriteBackToFile(node.Index, block);
+
+                if (node.CountOfRecords == 0 )
+                {
+                    var brotherNode = Trie.findBrother(node);
+
+                    if (brotherNode != null)
+                    {
+                        if (brotherNode.CountOfRecords + node.CountOfRecords <= BlockFactor && node.Parent != Trie.Root)
+                        {
+                            ShortenBranch(node, brotherNode);
+                        }
+                        else
+                        {
+                            AvailableIndexes.Add(node.Index);
+                            node.Index = -1;
+                        }
+                    }
+                    else
+                    {
+                        AvailableIndexes.Add(node.Index);
+                        node.Index = -1;
+                    }
+                }
+
+                return true;
+
+
+            }
+            else
+            {
+                Trace.WriteLine("Error when removing data.");
+                return false;
+            }
+
+
+
+           /* if (node != null)
+            {
+                if (node.Parent == Trie.Root)
+                {
+                    //???
+                    
+                }
+
+
+                var block = this.ReadBlockFromFile(node.Index);
+
+                if (block.Remove(data))
+                {
+                    node.CountOfRecords--;
+                    //WriteBackToFile(node.Index, block);
+                    noOfRecords--;
+
+                    var brother = Trie.findBrother(node);
+
+                    //if the brother is null, the node is root
+
+                    if (brother != null)
+                    {
+                        //node has parrent
+                        if (node.CountOfRecords + brother.CountOfRecords <= BlockFactor)
+                        {
+                            var nodeIndex = node.Index;
+                            var brotherIndex = brother.Index;
+                            var newIndex = -1;
+
+                            if (brother.Index != -1)
+                            {
+                                newIndex = nodeIndex > brotherIndex ? nodeIndex : brotherIndex;
+                            }
+                            else
+                            {
+                                newIndex = nodeIndex;
+                            }
+
+                            //merge sons to parent and create external node from parent
+                            ExternalNode newNode = new ExternalNode(newIndex, node.CountOfRecords + brother.CountOfRecords);
+                            //brother and node will be deleted and Parent will become newNode
+
+                            if (node.Parent.Parent == null) //node.parent is root
+                            {
+
+                            }
+                            else
+                            {
+                                if (node.Parent.Parent.LeftNode == node.Parent)
+                                {
+                                    node.Parent.Parent.LeftNode = newNode;
+                                }
+                                else //node.parent.parent.rightnode
+                                {
+                                    node.Parent.Parent.RightNode = newNode;
+                                }
+                                //now the node, brother and parent are replaced
+                            }
+
+                            //need to find block from the brother and get it from file
+                            //need to find block from the node and get it from file
+                            //remove things from the blocks and save it into new one
+                            //control the adress if its from the end then shorten the file
+
+                            var newBlock = new Block<T>(BlockFactor);
+
+                            var brothersBlock = new Block<T>(BlockFactor);
+
+                            if (brother.Index != -1)
+                            {
+                                brothersBlock = ReadBlockFromFile(brother.Index);
+                                foreach (var rec in brothersBlock.Records)
+                                {
+                                    if (newBlock.Insert(rec))
+                                    {
+                                        newNode.CountOfRecords++;
+                                    }
+                                    else
+                                    {
+                                        Trace.WriteLine("Error when inserting records in Remove. line:359");
+                                    }
+                                    brothersBlock.Remove(rec);
+
+                                    if (brotherIndex == (File.Length - BlockSize))
+                                    {
+                                        //its the last block
+                                        // do not need to rewrite, just delete from end
+                                        File.SetLength(brother.Index);
+                                        //TODO: controll the block before and before
+                                    }
+                                    else
+                                    {
+                                        //i do not have to write back i just need to store new index in available indexes
+
+                                        WriteBackToFile(brotherIndex, brothersBlock);
+                                    }
+                                    
+                                }
+                            }
+                            else
+                            {
+                                brothersBlock = null;
+                            }
+
+                            foreach (var rec in block.Records)
+                            {
+                                if (newBlock.Insert(rec))
+                                {
+                                    newNode.CountOfRecords++;
+                                }
+                                else
+                                {
+                                    Trace.WriteLine("Error when inserting records in Remove. line:376");
+                                }
+                                block.Remove(rec);
+
+                                if (nodeIndex == (File.Length - BlockSize))
+                                {
+                                    //its the last block
+                                    // do not need to rewrite, just delete from end
+                                    File.SetLength(nodeIndex);
+                                    //TODO: controll the block before and before
+                                }
+                                else
+                                {
+                                    //writes back the deleted file
+                                    WriteBackToFile(nodeIndex, block);
+                                }
+
+                            }
+
+                            
+
+
+
+                        }
+                    }
+                }
+                else
+                {
+                    Trace.WriteLine("Did not removed data.");
+                }
+            }*/
+        }
+
+
 
         public Block<T> FindBlockByHash(BitArray hash)
         {
@@ -341,7 +663,7 @@ namespace Dynamic_Hash.Hashing
                             }
                         }
                     }
-                    Trace.WriteLine("Item not found.");
+                    Trace.WriteLine("Item not found." + data.ToString());
                     return default(T);
                 }
             }

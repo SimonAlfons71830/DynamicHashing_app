@@ -11,21 +11,21 @@ namespace Dynamic_Hash.Tests
     public class DynamicHashingTests
     {
         public int podielInsert;
-        //public int podielRemove;
+        public int podielRemove;
         public int podielFind;
 
 
         public int passedInsert;
-        //public int passedRemove;
+        public int passedRemove;
         public int passedFind;
 
         public int failedInsert;
-        //public int failedRemove;
+        public int failedRemove;
         public int failedFind;
 
         public int pocetVykonanychOperacii;
         public int pocetInsert;
-        //public int pocetRemove;
+        public int pocetRemove;
         public int pocetFind;
 
         public DynamicHashing<Property> dynHash = new DynamicHashing<Property>("hashFile", 2);
@@ -39,13 +39,22 @@ namespace Dynamic_Hash.Tests
 
         private static Random random = new Random(0);
 
+        public void setNewBF(int blockFactor) 
+        { 
+            dynHash.BlockFactor = blockFactor;
+        }
+
         public void TestInsertRemoveFind()
         {
-            this.GenerateObjects(podielInsert + podielFind);
-            for (int i = 0; i < podielFind; i++)
+            this.GenerateObjects(podielInsert + podielFind + podielRemove);
+            for (int i = 0; i < podielFind+podielRemove; i++)
             {
                 int insertIndex = random.Next(availableObjects.Count);
                 Property insertData = availableObjects[insertIndex];
+                if (insertData.RegisterNumber.Equals(6))
+                {
+                    var stop = 0;
+                }
 
                 dynHash.Insert(insertData);
                 var data = dynHash.Find(insertData);
@@ -58,7 +67,7 @@ namespace Dynamic_Hash.Tests
                 availableObjects.RemoveAt(insertIndex);
             }
 
-            var pocetop = podielFind + podielInsert;
+            var pocetop = podielFind + podielInsert + podielRemove;
             for (int i = 0; i < pocetop; i++)
             {
                 int cislo = random.Next(pocetop - i);
@@ -67,9 +76,13 @@ namespace Dynamic_Hash.Tests
                 {
                     this.TestInsert();
                 }
-                else
+                else if(podielInsert <= cislo && cislo < (podielInsert + podielFind))
                 {
                     this.TestFind();
+                }
+                else
+                {
+                    this.TestRemove();
                 }
             }
         }
@@ -123,6 +136,11 @@ namespace Dynamic_Hash.Tests
             int insertIndex = random.Next(availableObjects.Count);
             Property insertData = availableObjects[insertIndex];
 
+            if (insertData.RegisterNumber.Equals(6))
+            {
+                var stop=0;
+            }
+
             dynHash.Insert(insertData);
             if (oldSize + 1 == this.dynHash.noOfRecords)
             {
@@ -146,6 +164,10 @@ namespace Dynamic_Hash.Tests
             int tryFindIndex = random.Next(usedKeys.Count);
             Property tryFindKey = usedKeys[tryFindIndex];
             var pomNodeKey = tryFindKey;
+            if (tryFindKey.RegisterNumber.Equals(6))
+            {
+                var stop = 0;
+            }
 
             var data = dynHash.Find(tryFindKey);
             if (data == null)
@@ -177,7 +199,46 @@ namespace Dynamic_Hash.Tests
 
         public void TestRemove()
         {
+            int oldSize = this.dynHash.noOfRecords;
 
+            int removeIndex = random.Next(usedKeys.Count);
+            Property removeData = usedKeys[removeIndex];
+
+            if (dynHash.Remove(removeData))
+            {
+                if (oldSize > dynHash.noOfRecords)
+                {
+                    passed++;
+                    passedRemove++;
+                    usedKeys.RemoveAt(removeIndex);
+                }
+                else
+                {
+                    failedRemove++;
+                    failed++;
+                }
+                /*var prop = dynHash.Find(removeData);
+                if (prop== null)
+                {
+                    passedRemove++;
+                    passed++;
+                    usedKeys.RemoveAt(removeIndex);
+                }
+                else
+                {
+                    failedRemove++;
+                    failed++;
+                    
+                }*/
+            }
+            else
+            {
+                failedRemove++;
+                failed++;
+            }
+            podielRemove--;
+            pocetVykonanychOperacii++;
+            pocetRemove++;
         }
 
 
@@ -185,21 +246,21 @@ namespace Dynamic_Hash.Tests
         {
             //pocetOperacii = 0;
             podielInsert = 0;
-            //podielRemove = 0;
+            podielRemove = 0;
             podielFind = 0;
             //seed = 0;
 
             passedInsert = 0;
-            //passedRemove = 0;
+            passedRemove = 0;
             passedFind = 0;
 
             failedInsert = 0;
-            //failedRemove = 0;
+            failedRemove = 0;
             failedFind = 0;
 
             pocetVykonanychOperacii = 0;
             pocetInsert = 0;
-            //pocetRemove = 0;
+            pocetRemove = 0;
             pocetFind = 0;
 
             this.availableObjects.Clear();
@@ -209,17 +270,22 @@ namespace Dynamic_Hash.Tests
             this.passed = 0;
             this.failed = 0;
 
+            dynHash.Trie = new Trie.Trie();
+            dynHash.AvailableIndexes.Clear();
+            dynHash.File.Close();
+            try
+            {
+                dynHash.File = new FileStream("hashing", FileMode.Create, FileAccess.ReadWrite);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException("Error in Hashing: IO exception.", e);
+            }
+
             failedObj = new List<Property>();
 
-            // Specify the path of the file you want to delete
-            string filePath = "hashFile";
 
-            // Check if the file exists before attempting to delete
-            if (File.Exists(filePath))
-            {
-                // Delete the file
-                File.Delete(filePath);
-            }
+            
         }
 
     }
