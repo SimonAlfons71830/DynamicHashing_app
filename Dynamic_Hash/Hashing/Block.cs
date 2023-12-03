@@ -15,6 +15,8 @@ namespace Dynamic_Hash.Hashing
         private Type _type;
         //number of blocks for the List
         private int _bf;
+        //index of the following block in overflow file
+        private int _ofindex;
 
         public Block(int blockFactor)
         {
@@ -22,6 +24,7 @@ namespace Dynamic_Hash.Hashing
             TypeOfData = typeof(T);
             Records = new List<T>(BlockFactor);
             ValidRecordsCount = 0;
+            Ofindex = -1;
 
             for (int i = 0; i < BlockFactor; i++)
             {
@@ -52,6 +55,7 @@ namespace Dynamic_Hash.Hashing
             get => _bf;
             set => _bf = value;
         }
+        public int Ofindex { get => _ofindex; set => _ofindex = value; }
 
         public bool Insert(T record)
         {

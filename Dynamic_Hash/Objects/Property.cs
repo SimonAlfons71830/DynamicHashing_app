@@ -84,20 +84,57 @@ namespace Dynamic_Hash.Objects
             return RegisterNumber.Equals(other.RegisterNumber);
         }
 
-        public BitArray getHash()
+        public BitArray getHash(int count)
         {
-            /*byte[] hash = Encoding.UTF8.GetBytes(RegisterNumber.ToString());
-            var bittarray = new BitArray(hash);
-            return bittarray;*/
+            byte[] hash = Encoding.UTF8.GetBytes(RegisterNumber.ToString());
+            var bitArray = new BitArray(hash);
 
+            // Ensure that the BitArray has at least 'count' bits
+            if (bitArray.Length >= count)
+            {
+                bool[] truncatedBits = new bool[count];
+                for (int i = 0; i < count; i++)
+                {
+                    truncatedBits[i] = bitArray[i];
+                }
+                return new BitArray(truncatedBits);
+            }
+
+            // If the BitArray has fewer bits than 'count', return the entire BitArray
+            return bitArray;
+        }
+
+        /*public BitArray getHash(int depth)
+        {
             using (MD5 md5 = MD5.Create())
             {
                 byte[] inputBytes = Encoding.Default.GetBytes(RegisterNumber.ToString());
                 byte[] hashBytes = md5.ComputeHash(inputBytes);
 
-                return new BitArray(hashBytes);
+                // Calculate the number of bytes needed to represent the specified bit count
+                int byteCount = (depth + 7) / 8;
+
+                // Truncate the hash to the specified number of bytes
+                byte[] truncatedHash = new byte[byteCount];
+                Array.Copy(hashBytes, truncatedHash, Math.Min(byteCount, hashBytes.Length));
+
+                // Convert the truncated hash to a BitArray
+                BitArray truncatedBitArray = new BitArray(truncatedHash);
+
+                // If the BitArray has more bits than required, truncate it
+                if (truncatedBitArray.Count > depth)
+                {
+                    for (int i = depth; i < truncatedBitArray.Count; i++)
+                    {
+                        truncatedBitArray[i] = false;
+                    }
+                }
+
+                return truncatedBitArray;
             }
-        }
+        }*/
+
+
 
         public Property createInstanceOfClass()
         {

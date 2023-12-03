@@ -28,7 +28,7 @@ namespace Dynamic_Hash.Tests
         public int pocetRemove;
         public int pocetFind;
 
-        public DynamicHashing<Property> dynHash = new DynamicHashing<Property>("hashFile", 2);
+        public DynamicHashing<Property> dynHash = new DynamicHashing<Property>("hashFile", 2,4);
         List<Property> availableObjects = new List<Property>();
         List<Property> usedKeys = new List<Property>();
         HashSet<int> uniqueNumbers = new HashSet<int>();
@@ -85,6 +85,8 @@ namespace Dynamic_Hash.Tests
                     this.TestRemove();
                 }
             }
+
+            dynHash.WriteAllBlocksToFile();
         }
 
         private void GenerateObjects(int pocetObjektov)

@@ -7,7 +7,7 @@ namespace QuadTree.Hashing
         //my equals method
         public bool MyEquals(T other);
         //returns a BitSet
-        public BitArray getHash();
+        public BitArray getHash(int count);
         //create an instance of a class
         public T createInstanceOfClass();
 
