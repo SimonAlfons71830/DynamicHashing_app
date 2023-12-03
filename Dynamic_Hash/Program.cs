@@ -74,6 +74,7 @@ namespace Dynamic_Hash
             Trace.WriteLine("Test Insert:" + test.passedInsert + "/" + test.pocetInsert);
             Trace.WriteLine("Test Find:" + test.passedFind+ "/" + test.pocetFind);
 */
+
             DynamicHashingTests dynTest = new DynamicHashingTests();
             Application.Run(new Form1(dynTest));
 

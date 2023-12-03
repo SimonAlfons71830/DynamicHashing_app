@@ -20,6 +20,8 @@ namespace Dynamic_Hash
 
         private void test_button_Click(object sender, EventArgs e)
         {
+            dynTest.setNewBFOverflow((int)bfOverflow_no.Value);
+            dynTest.setNewHashCount((int)hashCount_no.Value);
             dynTest.setNewBF((int)blockFactor_no.Value);
             dynTest.ResetTest();
             dynTest.podielInsert = (int)insert_no.Value;

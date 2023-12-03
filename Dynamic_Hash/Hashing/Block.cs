@@ -104,6 +104,7 @@ namespace Dynamic_Hash.Hashing
                     record.fromByteArray(reader.ReadBytes(record.getSize()));
                     Records.Add(record);
                 }
+                Ofindex = reader.ReadInt32();
             }
         }
 
@@ -114,6 +115,8 @@ namespace Dynamic_Hash.Hashing
             size += sizeof(int);
             //size of the record * bf
             size += Activator.CreateInstance<T>().getSize() * BlockFactor;
+            //index of the owerflowfile
+            size += sizeof(int);
 
             return size;
 
@@ -132,6 +135,7 @@ namespace Dynamic_Hash.Hashing
                     writer.Write(record.toByteArray());
                 }
 
+                writer.Write(Ofindex);
                 // Get the byte array from the stream
                 return stream.ToArray();
             }
@@ -150,6 +154,7 @@ namespace Dynamic_Hash.Hashing
                 sb.Append($" record{i + 1}: {record.ToString()}, ");
             }
 
+            sb.Append($"Next Block in OF : {Ofindex}");
             sb.Append("]");
 
             return sb.ToString();

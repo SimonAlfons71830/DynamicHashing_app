@@ -28,7 +28,7 @@ namespace Dynamic_Hash.Tests
         public int pocetRemove;
         public int pocetFind;
 
-        public DynamicHashing<Property> dynHash = new DynamicHashing<Property>("hashFile", 2,4);
+        public DynamicHashing<Property> dynHash = new DynamicHashing<Property>("hashFile", 2,5,2);
         List<Property> availableObjects = new List<Property>();
         List<Property> usedKeys = new List<Property>();
         HashSet<int> uniqueNumbers = new HashSet<int>();
@@ -42,6 +42,16 @@ namespace Dynamic_Hash.Tests
         public void setNewBF(int blockFactor) 
         { 
             dynHash.BlockFactor = blockFactor;
+        }
+
+        public void setNewBFOverflow(int blockFactoroverflow) 
+        {
+            dynHash.BlockFactorOverflow = blockFactoroverflow;
+        }
+
+        public void setNewHashCount(int count) 
+        {
+            dynHash.CountHashFun = count;
         }
 
         public void TestInsertRemoveFind()
@@ -144,7 +154,8 @@ namespace Dynamic_Hash.Tests
             }
 
             dynHash.Insert(insertData);
-            if (oldSize + 1 == this.dynHash.noOfRecords)
+            var data = dynHash.Find(insertData);
+            if (data != null)
             {
                 passedInsert++;
                 passed++;

@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
 using System.Security.Cryptography;
 using System.Xml.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Dynamic_Hash.Hashing
 {
@@ -20,15 +21,18 @@ namespace Dynamic_Hash.Hashing
         private List<int> availableIndexes;
         private List<int> availableIndexesOverflow;
         private int _countHashFun;
+        private int _blockFactorOverflow;
 
         public int noOfRecords;
 
-        public DynamicHashing(string fileName, int blockFactor, int countOfHashFunc) 
+        public DynamicHashing(string fileName, int blockFactor, int blockFactorOverflow, int countOfHashFunc) 
         {
             BlockFactor = blockFactor;
             Trie = new Trie.Trie();
             availableIndexes = new List<int>();
+            availableIndexesOverflow = new List<int>();
             CountHashFun = countOfHashFunc;
+            BlockFactorOverflow = blockFactorOverflow;
             
             //create main file
             try
@@ -59,6 +63,7 @@ namespace Dynamic_Hash.Hashing
         public List<int> AvailableIndexes { get => availableIndexes; set => availableIndexes = value; }
         public FileStream FileOverflow { get => _fileOverflow; set => _fileOverflow = value; }
         public List<int> AvailableIndexesOverflow { get => availableIndexesOverflow; set => availableIndexesOverflow = value; }
+        public int BlockFactorOverflow { get => _blockFactorOverflow; set => _blockFactorOverflow = value; }
 
         public int BlockSize
         {
@@ -69,6 +74,8 @@ namespace Dynamic_Hash.Hashing
             }
             set => _blockSize = value;
         }
+
+        
 
         public bool Insert(T data) 
         {
@@ -113,7 +120,7 @@ namespace Dynamic_Hash.Hashing
                         }
 
 
-                        WriteBackToFile(node.Index, block);
+                        WriteBackToFile(node.Index, block, true);
                         noOfRecords++;
 
                         node.CountOfRecords++;
@@ -122,11 +129,8 @@ namespace Dynamic_Hash.Hashing
                     }
                     else
                     {
-                        //to block in main file wont fit any more records 
-                        //need to save to overflow file
-                        //Block need the address of the following block
-                        
-
+                        //ERR 
+                        Trace.WriteLine("Error");
                     }
                     
                 }
@@ -134,11 +138,11 @@ namespace Dynamic_Hash.Hashing
                 //2.
                 else if (node.Index != -1 && node.CountOfRecords < this.BlockFactor) //adress + space left
                 {
-                    var block = ReadBlockFromFile(node.Index);
+                    var block = ReadBlockFromFile(node.Index, true);
                     if (block.Insert(data))
                     {
                         //write back to file on the same index
-                        WriteBackToFile(node.Index, block);
+                        WriteBackToFile(node.Index, block, true);
                         noOfRecords++;
                         node.CountOfRecords++;
                         Trace.WriteLine("Written to a new address." + block.ToString());
@@ -154,7 +158,20 @@ namespace Dynamic_Hash.Hashing
                 //3.
                 else if (node.CountOfRecords >= BlockFactor)
                 {
-                    var block = ReadBlockFromFile(node.Index);
+                    var block = ReadBlockFromFile(node.Index, true);
+
+                    if (level >= CountHashFun-1)
+                    {
+                        //look for block OfIndex
+                        //if it has search for it until next bloeck does not have ofindex
+                        //try to insert
+                        //if yes -> end
+                        //if not -> create new block and insert data + set index
+                        AddToOverflowBlock(block, data);
+                        WriteBackToFile(node.Index, block, true);
+                        return true;
+
+                    }
                     bool end = false;
 
                     int oldFreeIndex = node.Index;
@@ -201,7 +218,7 @@ namespace Dynamic_Hash.Hashing
 
 
                         level++; //level of current node + next position of the sons
-
+                        
                         foreach (var rec in block.Records)
                         {
                             var hash = rec.getHash(CountHashFun);
@@ -251,6 +268,16 @@ namespace Dynamic_Hash.Hashing
                                     //continue with this node
                                     continueRight = true;
                                     Trace.WriteLine("In Left son is no space left. Repeating the insert. Level: [" + level + "]");
+                                    //controll the level, if its bigger than desired hash func than this cycle cant continue
+                                    if (level == CountHashFun-1)
+                                    {
+                                        AddToOverflowBlock(blockRightSon, data);
+                                        RightSon.Index = oldFreeIndex;
+                                        WriteBackToFile(RightSon.Index, blockRightSon, true);
+                                        return true;
+                                    }
+                                    
+
                                 }
 
                             }
@@ -265,13 +292,33 @@ namespace Dynamic_Hash.Hashing
                                     //continue with this node
                                     continueLeft = true;
                                     Trace.WriteLine("In Right son is no space left. Repeating the insert. Level: [" + level + "]");
+                                    //controll the level, if its bigger than desired hash func than this cycle cant continue
+                                    if (level == CountHashFun - 1)
+                                    {
+                                        AddToOverflowBlock(blockLeftSon, data);
+                                        LeftSon.Index = oldFreeIndex;
+                                        WriteBackToFile(LeftSon.Index, blockLeftSon, true);
+                                        return true;
+                                    }
                                 }
                             }
                         }
                         else
                         {
-                            Trace.WriteLine("Trie if full.");
-                            return false;
+                            //where does data belong
+                            //create new OverFlowBlock and insert data there
+                            if (hashData[level])
+                            {
+                                //add overflow block to the right son
+                                AddToOverflowBlock(blockRightSon, data);
+
+                            }
+                            else
+                            {
+                                AddToOverflowBlock(blockLeftSon, data);
+                            }
+                            Trace.WriteLine("Added to overflow block");
+                            
                         }
 
                         if (continueLeft)
@@ -291,8 +338,8 @@ namespace Dynamic_Hash.Hashing
                                 //LeftSon.CountOfRecords = blockLeftSon.ValidRecordsCount;
                                 RightSon.Index = oldFreeIndex;
                                 //RightSon.CountOfRecords = blockRightSon.ValidRecordsCount;
-                                WriteBackToFile(LeftSon.Index, blockLeftSon);
-                                WriteBackToFile(RightSon.Index, blockRightSon);
+                                WriteBackToFile(LeftSon.Index, blockLeftSon, true);
+                                WriteBackToFile(RightSon.Index, blockRightSon, true);
                                 noOfRecords++;
                                 Trace.WriteLine("Written to a new address." + blockLeftSon.ToString());
                                 Trace.WriteLine("Written to a new address." + blockRightSon.ToString());
@@ -303,7 +350,7 @@ namespace Dynamic_Hash.Hashing
                             else if (LeftSon.CountOfRecords > 0)
                             {
                                 LeftSon.Index = oldFreeIndex;
-                                WriteBackToFile(LeftSon.Index, blockLeftSon);
+                                WriteBackToFile(LeftSon.Index, blockLeftSon, true);
                                 noOfRecords++;
                                 Trace.WriteLine("Written to a new address." + blockLeftSon.ToString());
                                 LeftSon.CountOfRecords = blockLeftSon.ValidRecordsCount;
@@ -311,7 +358,7 @@ namespace Dynamic_Hash.Hashing
                             else if (RightSon.CountOfRecords > 0)
                             {
                                 RightSon.Index = oldFreeIndex;
-                                WriteBackToFile(RightSon.Index, blockRightSon);
+                                WriteBackToFile(RightSon.Index, blockRightSon, true);
                                 noOfRecords++;
                                 Trace.WriteLine("Written to a new address." + blockRightSon.ToString());
                                 RightSon.CountOfRecords = blockRightSon.ValidRecordsCount;
@@ -329,6 +376,80 @@ namespace Dynamic_Hash.Hashing
             }
             return false;
 
+        }
+
+        private void AddToOverflowBlock(Block<T> block, T data) 
+        {
+            int index = block.Ofindex; //index of the start of this overflow block
+            if (block.Ofindex == -1)
+            {
+                if (availableIndexesOverflow.Count > 0)
+                {
+                    var newIndex = availableIndexesOverflow.ElementAt(0);
+                    availableIndexesOverflow.RemoveAt(0);
+                    block.Ofindex = newIndex;
+                }
+                else
+                {
+                    //nastavenie adresy na koniec suboru
+                    var newIndex = FileOverflow.Length;
+                    FileOverflow.SetLength(FileOverflow.Length + block.getSize());
+                    block.Ofindex = (int)newIndex;
+                }
+
+                var blockOverflow = new Block<T>(BlockFactorOverflow);
+                if (!blockOverflow.Insert(data))
+                {
+                    Trace.WriteLine("Error");
+                }
+                WriteBackToFile(block.Ofindex, blockOverflow, false);
+            }
+            else
+            {
+                while (true)
+                {
+                    block = ReadBlockFromFile(block.Ofindex, false);
+                    if (block.Ofindex == -1)
+                    {
+                        //last block was found
+                        break;
+                    }
+                }
+                if (block.ValidRecordsCount < BlockFactorOverflow)
+                {
+                    //fill record in
+                    if (!block.Insert(data))
+                    {
+                        Trace.WriteLine("Error");
+                    }
+                    WriteBackToFile(index,block,false);
+                }
+                else //create new block
+                {
+                    if (availableIndexesOverflow.Count > 0)
+                    {
+                        var newIndex = availableIndexesOverflow.ElementAt(0);
+                        availableIndexesOverflow.RemoveAt(0);
+                        block.Ofindex = newIndex;
+                    }
+                    else
+                    {
+                        //nastavenie adresy na koniec suboru
+                        var newIndex = FileOverflow.Length;
+                        FileOverflow.SetLength(FileOverflow.Length + block.getSize());
+                        block.Ofindex = (int)newIndex;
+                    }
+
+                    var blockOverflow = new Block<T>(BlockFactorOverflow);
+                    if (!blockOverflow.Insert(data))
+                    {
+                        Trace.WriteLine("Error");
+                    }
+                    WriteBackToFile(block.Ofindex, blockOverflow, false);
+                    WriteBackToFile(index,block, false);
+                }
+
+            }
         }
 
         private ExternalNode ShortenBranch(ExternalNode node, Block<T> block, ExternalNode brotherNode) 
@@ -362,7 +483,6 @@ namespace Dynamic_Hash.Hashing
                         }
 
                     }
-
                     
 
                     if (node.CountOfRecords == 0)
@@ -381,7 +501,7 @@ namespace Dynamic_Hash.Hashing
 
                 if (brotherNode.Index > -1)
                 {
-                    var brotherBlock = ReadBlockFromFile(brotherNode.Index);
+                    var brotherBlock = ReadBlockFromFile(brotherNode.Index, true);
                     var pom = brotherBlock.ValidRecordsCount;
                     for (int i = 0; i < pom; i++)
                     {
@@ -429,7 +549,7 @@ namespace Dynamic_Hash.Hashing
 
                 newNode.Index = newIndex;
 
-                WriteBackToFile(newNode.Index, newBlock);
+                WriteBackToFile(newNode.Index, newBlock, true);
 
                 return newNode;
                 /*brotherNode = Trie.findBrother(newNode);
@@ -457,7 +577,7 @@ namespace Dynamic_Hash.Hashing
             var dataHash = data.getHash(CountHashFun);
             var node = Trie.getExternalNode(dataHash, out level);
 
-            var block = ReadBlockFromFile(node.Index);
+            var block = ReadBlockFromFile(node.Index, true);
             if (block.Remove(data))
             {
                 Trace.WriteLine("succesfully removed:" + data.ToString());
@@ -472,7 +592,7 @@ namespace Dynamic_Hash.Hashing
                     }
                     else
                     {
-                        WriteBackToFile(node.Index, block);
+                        WriteBackToFile(node.Index, block, true);
                         return true;
                     }
                 }
@@ -495,7 +615,7 @@ namespace Dynamic_Hash.Hashing
                             }
                             else
                             {
-                                WriteBackToFile(node.Index, block);
+                                WriteBackToFile(node.Index, block, true);
                                 //AvailableIndexes.Add(node.Index);
                                 //node.Index = -1;
                             }
@@ -505,7 +625,7 @@ namespace Dynamic_Hash.Hashing
                         if (brotherNode.CountOfRecords + node.CountOfRecords <= BlockFactor && node.Parent != Trie.Root && brotherNode.Index != -1)
                         {
                            node = ShortenBranch(node, block, brotherNode);
-                            block = ReadBlockFromFile(node.Index);
+                            block = ReadBlockFromFile(node.Index, true);
                         }
                         else
                         {
@@ -517,52 +637,6 @@ namespace Dynamic_Hash.Hashing
 
                 }
 
-                /*
-                               if (node.CountOfRecords == 0 )
-                                {
-                                    var brotherNode = Trie.findBrother(node);
-
-                                    if (brotherNode != null) //brother is external node
-                                    {
-                                        if (brotherNode!.CountOfRecords + node.CountOfRecords <= BlockFactor && node.Parent != Trie.Root && brotherNode.Index!=-1)
-                                        {
-                                            ShortenBranch(node, brotherNode);
-                                        }
-                                        else
-                                        {
-                                            if (node.CountOfRecords == 0)
-                                            {
-                                                ShortenFile(node,block);
-                                            }
-                                            else
-                                            {
-                                                AvailableIndexes.Add(node.Index);
-                                                node.Index = -1;
-                                            }
-
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (node.CountOfRecords == 0)
-                                        {
-                                            ShortenFile(node, block);
-                                        }
-                                        else
-                                        {
-                                            AvailableIndexes.Add(node.Index);
-                                            node.Index = -1;
-                                        }
-                                    }
-                                }
-
-                                return true;
-
-
-                            }
-                            Trace.WriteLine("Error when removing data.");
-                            return false;
-                            */
             }
             return false;
             Trace.WriteLine("Error when removing data.");
@@ -586,7 +660,7 @@ namespace Dynamic_Hash.Hashing
             else
             {
                 availableIndexes.Add(node.Index);
-                WriteBackToFile(node.Index,block);
+                WriteBackToFile(node.Index,block,true);
             }
             node.Index = -1;
 
@@ -599,33 +673,59 @@ namespace Dynamic_Hash.Hashing
             if (node != null)
             {
                 //nacitat block z file a returnut ho
-                var blockFromFile = ReadBlockFromFile(node.Index);
+                var blockFromFile = ReadBlockFromFile(node.Index,true);
                 return blockFromFile;
             }
             return null;
 
         }
-        public Block<T> ReadBlockFromFile(int index)
+        public Block<T> ReadBlockFromFile(int index, bool mainFile)
         {
-            Block<T> block = new Block<T>(BlockFactor);
+            Block<T> block;
+            if (mainFile)
+            {
+                block = new Block<T>(BlockFactor);
+            }
+            else
+            {
+                block = new Block<T>(BlockFactorOverflow);
+            }
+            
             byte[] bytes = new byte[block.getSize()];
 
-            File.Seek(index, SeekOrigin.Begin);
-            File.Read(bytes);
-
-            if (File.Length < (index + bytes.Count()))
+            if (mainFile)
             {
-                Trace.WriteLine("Reading more than File Length.");
-            }
+                File.Seek(index, SeekOrigin.Begin);
+                File.Read(bytes);
 
+                if (File.Length < (index + bytes.Count()))
+                {
+                    Trace.WriteLine("Reading more than File Length.");
+                }
+            }
+            else
+            {
+                FileOverflow.Seek(index,SeekOrigin.Begin);
+                FileOverflow.Read(bytes);
+            }
             block.fromByteArray(bytes);
             return block;
         }
 
-        public void WriteBackToFile(int index, Block<T> block) 
+
+
+        public void WriteBackToFile(int index, Block<T> block, bool mainFile) 
         {
-            File.Seek(index, SeekOrigin.Begin);
-            File.Write(block.toByteArray());
+            if (mainFile)
+            {
+                File.Seek(index, SeekOrigin.Begin);
+                File.Write(block.toByteArray());
+            }
+            else
+            {
+                FileOverflow.Seek(index, SeekOrigin.Begin);
+                FileOverflow.Write(block.toByteArray());
+            }
         }
 
         public T Find(T data)
@@ -633,6 +733,8 @@ namespace Dynamic_Hash.Hashing
             //find hash func of data
             //find external node
             //read from file from index of the node
+
+            T returnData;
 
             var level = -1;
             var node = Trie.getExternalNode(data.getHash(CountHashFun), out level);
@@ -646,7 +748,7 @@ namespace Dynamic_Hash.Hashing
                 }
                 else
                 {
-                    var block = ReadBlockFromFile(node.Index);
+                    var block = ReadBlockFromFile(node.Index,true);
                     for (int i = 0; i < block.Records.Count; i++)
                     {
                         if (i < block.ValidRecordsCount)
@@ -657,7 +759,33 @@ namespace Dynamic_Hash.Hashing
                             }
                         }
                     }
-                    Trace.WriteLine("Item not found." + data.ToString());
+                    Trace.WriteLine("Item not found in main file." + data.ToString());
+
+                    if (block.Ofindex != -1)
+                    {
+                        while (true) 
+                        {
+                            block = ReadBlockFromFile(block.Ofindex,false);
+                            if (block == null)
+                            {
+                                return default(T);
+                            }
+                            for (int i = 0; i < block.ValidRecordsCount; i++)
+                            {
+                                if (i < block.ValidRecordsCount)
+                                {
+                                    if (data.MyEquals(block.Records.ElementAt(i)))
+                                    {
+                                        return block.Records.ElementAt(i);
+                                    }
+                                }
+                            }
+                            if (block.Ofindex == -1)
+                            {
+                                return default(T);
+                            }
+                        }
+                    }
                     return default(T);
                 }
             }

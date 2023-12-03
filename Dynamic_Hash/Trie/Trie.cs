@@ -77,7 +77,7 @@ namespace Dynamic_Hash.Trie
 
             Node currentNode = Root;
 
-            for (int i = 0; i < bitset.Count; i++)
+            for (int i = 0; i <= bitset.Count; i++)
             {
                 if (currentNode is ExternalNode externalNode)
                 {
