@@ -1,6 +1,7 @@
 using Dynamic_Hash.Hashing;
 using Dynamic_Hash.Objects;
 using Dynamic_Hash.Tests;
+using System.Collections.Generic;
 using System.Diagnostics;
 namespace Dynamic_Hash
 {
@@ -12,6 +13,25 @@ namespace Dynamic_Hash
         [STAThread]
         static void Main()
         {
+
+            /*var block = new Block<Property>(5);
+            var list = new List<int>();
+            list.Add(1);
+            var prop = new Property(0, "Prop", ((12.3, 1.2), (3.5, 4.8)), list);
+            var prop2 = new Property(2, "NewHeavenLands", ((5, 9), (10, 30)), list);
+            var prop3 = new Property(3, "OldCrook", ((2, 2), (1, 1)), list);
+            block.Insert(prop);
+            block.Insert(prop2);
+            block.OfIndexBefore = 0;
+            block.OfindexNext = 418;
+
+            byte[] arr = block.toByteArray();
+
+            var block2 = new Block<Property>(5);
+            block2.fromByteArray(arr);
+
+            Trace.WriteLine(block2.ToString());*/
+
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             /*ApplicationConfiguration.Initialize();

@@ -16,7 +16,8 @@ namespace Dynamic_Hash.Hashing
         //number of blocks for the List
         private int _bf;
         //index of the following block in overflow file
-        private int _ofindex;
+        private int _ofindexNext;
+        private int _ofIndexBefore;
 
         public Block(int blockFactor)
         {
@@ -24,7 +25,8 @@ namespace Dynamic_Hash.Hashing
             TypeOfData = typeof(T);
             Records = new List<T>(BlockFactor);
             ValidRecordsCount = 0;
-            Ofindex = -1;
+            OfindexNext = -1;
+            OfIndexBefore = -1;
 
             for (int i = 0; i < BlockFactor; i++)
             {
@@ -55,7 +57,8 @@ namespace Dynamic_Hash.Hashing
             get => _bf;
             set => _bf = value;
         }
-        public int Ofindex { get => _ofindex; set => _ofindex = value; }
+        public int OfindexNext { get => _ofindexNext; set => _ofindexNext = value; }
+        public int OfIndexBefore { get => _ofIndexBefore; set => _ofIndexBefore = value; }
 
         public bool Insert(T record)
         {
@@ -95,6 +98,7 @@ namespace Dynamic_Hash.Hashing
             using (MemoryStream stream = new MemoryStream(byteArray))
             using (BinaryReader reader = new BinaryReader(stream, Encoding.Default, true))
             {
+                OfIndexBefore = reader.ReadInt32();
                 ValidRecordsCount = reader.ReadInt32();
                 Records.Clear();
 
@@ -104,13 +108,15 @@ namespace Dynamic_Hash.Hashing
                     record.fromByteArray(reader.ReadBytes(record.getSize()));
                     Records.Add(record);
                 }
-                Ofindex = reader.ReadInt32();
+                OfindexNext = reader.ReadInt32();
             }
         }
 
         public int getSize()
         {
             var size = 0;
+            //address before
+            size += sizeof(int);
             //valid records count - int 4B
             size += sizeof(int);
             //size of the record * bf
@@ -127,6 +133,8 @@ namespace Dynamic_Hash.Hashing
             using (MemoryStream stream = new MemoryStream())
             using (BinaryWriter writer = new BinaryWriter(stream))
             {
+                writer.Write(OfIndexBefore);
+
                 writer.Write(ValidRecordsCount);
 
                 foreach (T record in Records)
@@ -135,7 +143,7 @@ namespace Dynamic_Hash.Hashing
                     writer.Write(record.toByteArray());
                 }
 
-                writer.Write(Ofindex);
+                writer.Write(OfindexNext);
                 // Get the byte array from the stream
                 return stream.ToArray();
             }
@@ -154,7 +162,7 @@ namespace Dynamic_Hash.Hashing
                 sb.Append($" record{i + 1}: {record.ToString()}, ");
             }
 
-            sb.Append($"Next Block in OF : {Ofindex}");
+            sb.Append($"Next Block in OF : {OfindexNext}");
             sb.Append("]");
 
             return sb.ToString();

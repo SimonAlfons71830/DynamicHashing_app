@@ -174,9 +174,10 @@ namespace Dynamic_Hash.Hashing
                     }
                     bool end = false;
 
-                    int oldFreeIndex = node.Index;
+                    availableIndexes.Add(node.Index);
+                    /*int oldFreeIndex = node.Index;
                     int newFreeIndex = (int)File.Length;
-                    File.SetLength(File.Length + BlockSize);
+                    File.SetLength(File.Length + BlockSize);*/
 
                     while (node.CountOfRecords+1 > BlockFactor) //added a record to node
                     {
@@ -272,8 +273,12 @@ namespace Dynamic_Hash.Hashing
                                     if (level == CountHashFun-1)
                                     {
                                         AddToOverflowBlock(blockRightSon, data);
-                                        RightSon.Index = oldFreeIndex;
+                                        ChooseIndex(RightSon, blockRightSon);
+                                        //ChooseIndex(LeftSon, blockLeftSon);
+                                        //RightSon.Index = oldFreeIndex;
+                                        LeftSon.Index = -1;
                                         WriteBackToFile(RightSon.Index, blockRightSon, true);
+                                        //WriteBackToFile(LeftSon.Index, blockLeftSon, true);
                                         return true;
                                     }
                                     
@@ -296,8 +301,12 @@ namespace Dynamic_Hash.Hashing
                                     if (level == CountHashFun - 1)
                                     {
                                         AddToOverflowBlock(blockLeftSon, data);
-                                        LeftSon.Index = oldFreeIndex;
+                                        ChooseIndex(LeftSon, blockLeftSon);
+                                        //ChooseIndex(RightSon, blockRightSon);
+                                        RightSon.Index = -1; //has 0 records
                                         WriteBackToFile(LeftSon.Index, blockLeftSon, true);
+                                       
+                                        //WriteBackToFile(RightSon.Index, blockRightSon, true);
                                         return true;
                                     }
                                 }
@@ -334,9 +343,12 @@ namespace Dynamic_Hash.Hashing
                             end = true;
                             if (LeftSon.CountOfRecords > 0 && RightSon.CountOfRecords > 0)
                             {
-                                LeftSon.Index = newFreeIndex;
+
+                                ChooseIndex(RightSon, blockRightSon);
+                                ChooseIndex(LeftSon, blockLeftSon);
+                                //LeftSon.Index = newFreeIndex;
                                 //LeftSon.CountOfRecords = blockLeftSon.ValidRecordsCount;
-                                RightSon.Index = oldFreeIndex;
+                                //RightSon.Index = oldFreeIndex;
                                 //RightSon.CountOfRecords = blockRightSon.ValidRecordsCount;
                                 WriteBackToFile(LeftSon.Index, blockLeftSon, true);
                                 WriteBackToFile(RightSon.Index, blockRightSon, true);
@@ -349,7 +361,7 @@ namespace Dynamic_Hash.Hashing
                             }
                             else if (LeftSon.CountOfRecords > 0)
                             {
-                                LeftSon.Index = oldFreeIndex;
+                                ChooseIndex(LeftSon, blockLeftSon);
                                 WriteBackToFile(LeftSon.Index, blockLeftSon, true);
                                 noOfRecords++;
                                 Trace.WriteLine("Written to a new address." + blockLeftSon.ToString());
@@ -357,7 +369,7 @@ namespace Dynamic_Hash.Hashing
                             }
                             else if (RightSon.CountOfRecords > 0)
                             {
-                                RightSon.Index = oldFreeIndex;
+                                ChooseIndex(RightSon, blockRightSon);
                                 WriteBackToFile(RightSon.Index, blockRightSon, true);
                                 noOfRecords++;
                                 Trace.WriteLine("Written to a new address." + blockRightSon.ToString());
@@ -374,27 +386,47 @@ namespace Dynamic_Hash.Hashing
             {
                 return false;
             }
-            return false;
+            return true;
+        }
 
+        private void ChooseIndex(ExternalNode node, Block<T> block) 
+        {
+            if (availableIndexes.Count > 0)
+            {
+                var newIndex = availableIndexes.ElementAt(0);
+                availableIndexes.RemoveAt(0);
+                node.Index = newIndex;
+            }
+            else
+            {
+                //nastavenie adresy na koniec suboru
+                var newIndex = File.Length;
+                File.SetLength(File.Length + block.getSize());
+                node.Index = (int)newIndex;
+            }
         }
 
         private void AddToOverflowBlock(Block<T> block, T data) 
         {
-            int index = block.Ofindex; //index of the start of this overflow block
-            if (block.Ofindex == -1)
+            var indexes = new List<int>();
+            indexes.Add(block.OfindexNext);
+            //index from the main file to the overflowing one
+
+            int index = block.OfindexNext; //index of the start of this overflow block sequence
+            if (block.OfindexNext == -1)
             {
                 if (availableIndexesOverflow.Count > 0)
                 {
                     var newIndex = availableIndexesOverflow.ElementAt(0);
                     availableIndexesOverflow.RemoveAt(0);
-                    block.Ofindex = newIndex;
+                    block.OfindexNext = newIndex;
                 }
                 else
                 {
                     //nastavenie adresy na koniec suboru
                     var newIndex = FileOverflow.Length;
                     FileOverflow.SetLength(FileOverflow.Length + block.getSize());
-                    block.Ofindex = (int)newIndex;
+                    block.OfindexNext = (int)newIndex;
                 }
 
                 var blockOverflow = new Block<T>(BlockFactorOverflow);
@@ -402,18 +434,27 @@ namespace Dynamic_Hash.Hashing
                 {
                     Trace.WriteLine("Error");
                 }
-                WriteBackToFile(block.Ofindex, blockOverflow, false);
+                WriteBackToFile(block.OfindexNext, blockOverflow, false);
             }
             else
             {
+                int i = 0;
+                bool first = true;
                 while (true)
                 {
-                    block = ReadBlockFromFile(block.Ofindex, false);
-                    if (block.Ofindex == -1)
+                    block = ReadBlockFromFile(block.OfindexNext, false);
+                    i++;
+                    if (i>1)
+                    {
+                        first = false;
+                    }
+                    if (block.OfindexNext == -1)
                     {
                         //last block was found
                         break;
                     }
+                    indexes.Add(block.OfindexNext);
+                    
                 }
                 if (block.ValidRecordsCount < BlockFactorOverflow)
                 {
@@ -422,7 +463,9 @@ namespace Dynamic_Hash.Hashing
                     {
                         Trace.WriteLine("Error");
                     }
-                    WriteBackToFile(index,block,false);
+
+                    WriteBackToFile(indexes[indexes.Count() - 1], block, false);
+                    
                 }
                 else //create new block
                 {
@@ -430,14 +473,16 @@ namespace Dynamic_Hash.Hashing
                     {
                         var newIndex = availableIndexesOverflow.ElementAt(0);
                         availableIndexesOverflow.RemoveAt(0);
-                        block.Ofindex = newIndex;
+                        //block.OfindexNext = newIndex;
+                        indexes.Add(newIndex);
                     }
                     else
                     {
                         //nastavenie adresy na koniec suboru
                         var newIndex = FileOverflow.Length;
                         FileOverflow.SetLength(FileOverflow.Length + block.getSize());
-                        block.Ofindex = (int)newIndex;
+                        //block.OfindexNext = (int)newIndex;
+                        indexes.Add((int)newIndex);
                     }
 
                     var blockOverflow = new Block<T>(BlockFactorOverflow);
@@ -445,8 +490,27 @@ namespace Dynamic_Hash.Hashing
                     {
                         Trace.WriteLine("Error");
                     }
-                    WriteBackToFile(block.Ofindex, blockOverflow, false);
-                    WriteBackToFile(index,block, false);
+
+                    if (first)
+                    {
+                        block.OfIndexBefore = -1; //stays that way
+                        block.OfindexNext = indexes[indexes.Count() - 1];
+                        //block.OfindexNext = indexes[indexes.Count() -2];
+                        //it will write to indexes[0]
+                        blockOverflow.OfIndexBefore = indexes[indexes.Count() - 2];
+                        WriteBackToFile(block.OfindexNext, blockOverflow, false);
+                        WriteBackToFile(blockOverflow.OfIndexBefore, block, false);
+                    }
+                    else
+                    {
+                        //block.OfIndexBefore = indexes[indexes.Count() - 3];
+                        block.OfindexNext = indexes[indexes.Count() - 1];
+                        blockOverflow.OfIndexBefore = indexes[indexes.Count() - 2];
+                        WriteBackToFile(block.OfindexNext, blockOverflow, false);
+                        WriteBackToFile(blockOverflow.OfIndexBefore, block, false);
+                    }
+
+                    
                 }
 
             }
@@ -761,11 +825,11 @@ namespace Dynamic_Hash.Hashing
                     }
                     Trace.WriteLine("Item not found in main file." + data.ToString());
 
-                    if (block.Ofindex != -1)
+                    if (block.OfindexNext != -1)
                     {
                         while (true) 
                         {
-                            block = ReadBlockFromFile(block.Ofindex,false);
+                            block = ReadBlockFromFile(block.OfindexNext,false);
                             if (block == null)
                             {
                                 return default(T);
@@ -780,7 +844,7 @@ namespace Dynamic_Hash.Hashing
                                     }
                                 }
                             }
-                            if (block.Ofindex == -1)
+                            if (block.OfindexNext == -1)
                             {
                                 return default(T);
                             }

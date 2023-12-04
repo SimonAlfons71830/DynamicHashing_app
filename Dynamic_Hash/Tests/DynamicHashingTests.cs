@@ -61,19 +61,23 @@ namespace Dynamic_Hash.Tests
             {
                 int insertIndex = random.Next(availableObjects.Count);
                 Property insertData = availableObjects[insertIndex];
-                if (insertData.RegisterNumber.Equals(6))
+                if (insertData.RegisterNumber.Equals(161))
                 {
                     var stop = 0;
                 }
 
-                dynHash.Insert(insertData);
+                if (!dynHash.Insert(insertData))
+                {
+                    var pom = "error";
+                }
+                
+
+                usedKeys.Add(insertData);
                 var data = dynHash.Find(insertData);
                 if (data == null)
                 {
                     var pom = "error";
                 }
-
-                usedKeys.Add(insertData);
                 availableObjects.RemoveAt(insertIndex);
             }
 
@@ -148,7 +152,7 @@ namespace Dynamic_Hash.Tests
             int insertIndex = random.Next(availableObjects.Count);
             Property insertData = availableObjects[insertIndex];
 
-            if (insertData.RegisterNumber.Equals(6))
+            if (insertData.RegisterNumber.Equals(161))
             {
                 var stop=0;
             }
@@ -177,7 +181,7 @@ namespace Dynamic_Hash.Tests
             int tryFindIndex = random.Next(usedKeys.Count);
             Property tryFindKey = usedKeys[tryFindIndex];
             var pomNodeKey = tryFindKey;
-            if (tryFindKey.RegisterNumber.Equals(6))
+            if (tryFindKey.RegisterNumber.Equals(161))
             {
                 var stop = 0;
             }
@@ -185,8 +189,9 @@ namespace Dynamic_Hash.Tests
             var data = dynHash.Find(tryFindKey);
             if (data == null)
             {
+                failedFind++;
                 failed++;
-                //return; 
+                failedObj.Add(tryFindKey);
             }
             else
             {
