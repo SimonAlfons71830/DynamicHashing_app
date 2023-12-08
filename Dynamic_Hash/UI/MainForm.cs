@@ -1,13 +1,14 @@
 using Dynamic_Hash.Tests;
+using Dynamic_Hash.UI;
 using System.Diagnostics.PerformanceData;
 using System.Security.Policy;
 
 namespace Dynamic_Hash
 {
-    public partial class Form1 : Form
+    public partial class MainForm : Form
     {
         DynamicHashingTests dynTest;
-        public Form1(DynamicHashingTests dynTestH)
+        public MainForm(DynamicHashingTests dynTestH)
         {
             dynTest = dynTestH;
             InitializeComponent();
@@ -35,8 +36,14 @@ namespace Dynamic_Hash
             "   pocet operacii find : \n\t\tpassed: " + dynTest.passedFind + "\n\t\tfailed: " + dynTest.failedFind + "\n" +
             "   pocet operacii remove : \n\t\tpassed: " + dynTest.passedRemove + "\n\t\tfailed: " + dynTest.failedRemove + "\n";
 
+        }
 
-
+        private void toStrintg_button_Click(object sender, EventArgs e)
+        {
+            var form = new ToStringMain(dynTest);
+            this.Hide();
+            form.ShowDialog();
+            
         }
     }
 }

@@ -5,7 +5,10 @@ using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
+using System.Net.NetworkInformation;
+using System.Reflection.Metadata.Ecma335;
 using System.Security.Cryptography;
+using System.Text;
 using System.Xml.Linq;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -18,21 +21,29 @@ namespace Dynamic_Hash.Hashing
         private FileStream _file;
         private FileStream _fileOverflow;
         private int _blockSize;
-        private List<int> availableIndexes;
-        private List<int> availableIndexesOverflow;
+        private int _blockSizeOf;
+        //private List<int> availableIndexes;
+        //private List<int> availableIndexesOverflow;
         private int _countHashFun;
         private int _blockFactorOverflow;
 
+        private int _emptyBlocksIndex;
+        private int _emptyBlocksIndexOverflow;
+
         public int noOfRecords;
 
+
+        //TODO: count of records navysovat aj pri pridavani recordu do bloku v preplnovacom subore ??
         public DynamicHashing(string fileName, int blockFactor, int blockFactorOverflow, int countOfHashFunc) 
         {
             BlockFactor = blockFactor;
             Trie = new Trie.Trie();
-            availableIndexes = new List<int>();
-            availableIndexesOverflow = new List<int>();
+            //availableIndexes = new List<int>();
+            //availableIndexesOverflow = new List<int>();
             CountHashFun = countOfHashFunc;
             BlockFactorOverflow = blockFactorOverflow;
+            EmptyBlocksIndex = -1;
+            EmptyBlocksIndexOverflow = -1;
             
             //create main file
             try
@@ -60,9 +71,9 @@ namespace Dynamic_Hash.Hashing
         public FileStream File { get => _file; set => _file = value; }
         internal Trie.Trie Trie { get => _trie; set => _trie = value; }
         public int CountHashFun { get => _countHashFun; set => _countHashFun = value; }
-        public List<int> AvailableIndexes { get => availableIndexes; set => availableIndexes = value; }
+        //public List<int> AvailableIndexes { get => availableIndexes; set => availableIndexes = value; }
         public FileStream FileOverflow { get => _fileOverflow; set => _fileOverflow = value; }
-        public List<int> AvailableIndexesOverflow { get => availableIndexesOverflow; set => availableIndexesOverflow = value; }
+        //public List<int> AvailableIndexesOverflow { get => availableIndexesOverflow; set => availableIndexesOverflow = value; }
         public int BlockFactorOverflow { get => _blockFactorOverflow; set => _blockFactorOverflow = value; }
 
         public int BlockSize
@@ -75,8 +86,93 @@ namespace Dynamic_Hash.Hashing
             set => _blockSize = value;
         }
 
-        
+        public int BlockSizeOF
+        {
+            get
+            {
+                var block = new Block<T>(BlockFactorOverflow);
+                return block.getSize();
+            }
+            set => _blockSizeOf = value;
+        }
+        public int EmptyBlocksIndex { get => _emptyBlocksIndex; set => _emptyBlocksIndex = value; }
+        public int EmptyBlocksIndexOverflow { get => _emptyBlocksIndexOverflow; set => _emptyBlocksIndexOverflow = value; }
 
+
+        public int ReturnFreeAdress(bool main) 
+        {
+
+            if (main)
+            {
+
+                if (EmptyBlocksIndex != -1)
+                {
+                    var index = EmptyBlocksIndex;
+                    var block = ReadBlockFromFile(EmptyBlocksIndex, true);
+                    if (block.ChainIndexAfter != -1)
+                    {
+                        var next = ReadBlockFromFile(block.ChainIndexAfter, true);
+                        next.ChainIndexBefore = -1;
+                        EmptyBlocksIndex = block.ChainIndexAfter;
+                        WriteBackToFile(block.ChainIndexAfter, next, true);
+                        return index;
+                    }
+                    else
+                    {
+                        //its first one in chaining
+
+                        EmptyBlocksIndex = -1;
+                        return index;
+                    }
+                }
+                else
+                {
+                    //file length increase
+                    //nastavenie adresy na koniec suboru
+                    var newIndex = File.Length;
+                    File.SetLength(File.Length + BlockSize);
+                    return (int)newIndex;
+                }
+
+            }
+            else
+            {
+
+                if (EmptyBlocksIndexOverflow != -1)
+                {
+                    var index = EmptyBlocksIndexOverflow;
+                    var block = ReadBlockFromFile(EmptyBlocksIndexOverflow, false);
+                    if (block.ChainIndexAfter != -1)
+                    {
+                        var next = ReadBlockFromFile(block.ChainIndexAfter, false);
+                        next.ChainIndexBefore = -1;
+                        EmptyBlocksIndexOverflow = block.ChainIndexAfter;
+                        WriteBackToFile(block.ChainIndexAfter, next, false);
+                        return index;
+                    }
+                    else
+                    {
+                        //its first one in chaining
+
+                        EmptyBlocksIndexOverflow = -1;
+                        return index;
+                    }
+                }
+                else
+                {
+                    //file length increase
+                    //nastavenie adresy na koniec suboru
+                    var newIndex = FileOverflow.Length;
+                    FileOverflow.SetLength(FileOverflow.Length + BlockSizeOF);
+                    return (int)newIndex;
+                }
+
+            }
+        }
+
+        //TODO: dokumentacia - diagram tried + pri kazdej metode kolko krat pristupujem do suboru + popis algoritmu
+
+        //TODO: pri inserte checknut ci sa tam uz nenachadza duplicitny kluc
         public bool Insert(T data) 
         {
             //aply hash function
@@ -105,21 +201,9 @@ namespace Dynamic_Hash.Hashing
                     Block<T> block = new Block<T>(BlockFactor);
                     if (block.Insert(data))
                     {
-                        if (availableIndexes.Count > 0)
-                        {
-                            var newIndex = availableIndexes.ElementAt(0);
-                            availableIndexes.RemoveAt(0);
-                            node.Index = newIndex;
-                        }
-                        else
-                        {
-                            //nastavenie adresy na koniec suboru
-                            var newIndex = File.Length;
-                            File.SetLength(File.Length + block.getSize());
-                            node.Index = (int)newIndex;
-                        }
 
-
+                        node.Index = ReturnFreeAdress(true);
+                        
                         WriteBackToFile(node.Index, block, true);
                         noOfRecords++;
 
@@ -132,7 +216,6 @@ namespace Dynamic_Hash.Hashing
                         //ERR 
                         Trace.WriteLine("Error");
                     }
-                    
                 }
 
                 //2.
@@ -168,13 +251,14 @@ namespace Dynamic_Hash.Hashing
                         //if yes -> end
                         //if not -> create new block and insert data + set index
                         AddToOverflowBlock(block, data);
+                        node.CountOfRecords++;
                         WriteBackToFile(node.Index, block, true);
                         return true;
 
                     }
                     bool end = false;
 
-                    availableIndexes.Add(node.Index);
+                    //availableIndexes.Add(node.Index);
                     /*int oldFreeIndex = node.Index;
                     int newFreeIndex = (int)File.Length;
                     File.SetLength(File.Length + BlockSize);*/
@@ -273,18 +357,18 @@ namespace Dynamic_Hash.Hashing
                                     if (level == CountHashFun-1)
                                     {
                                         AddToOverflowBlock(blockRightSon, data);
-                                        ChooseIndex(RightSon, blockRightSon);
+                                        RightSon.Index = ReturnFreeAdress(true);
+
+                                        //ChooseIndex(RightSon, blockRightSon);
                                         //ChooseIndex(LeftSon, blockLeftSon);
                                         //RightSon.Index = oldFreeIndex;
                                         LeftSon.Index = -1;
                                         WriteBackToFile(RightSon.Index, blockRightSon, true);
                                         //WriteBackToFile(LeftSon.Index, blockLeftSon, true);
+                                        node.CountOfRecords++;
                                         return true;
                                     }
-                                    
-
                                 }
-
                             }
                             else
                             {
@@ -301,18 +385,20 @@ namespace Dynamic_Hash.Hashing
                                     if (level == CountHashFun - 1)
                                     {
                                         AddToOverflowBlock(blockLeftSon, data);
-                                        ChooseIndex(LeftSon, blockLeftSon);
+                                        LeftSon.Index = ReturnFreeAdress(true);
+                                        
+                                        //ChooseIndex(LeftSon, blockLeftSon);
                                         //ChooseIndex(RightSon, blockRightSon);
                                         RightSon.Index = -1; //has 0 records
                                         WriteBackToFile(LeftSon.Index, blockLeftSon, true);
-                                       
+                                        node.CountOfRecords++;
                                         //WriteBackToFile(RightSon.Index, blockRightSon, true);
                                         return true;
                                     }
                                 }
                             }
                         }
-                        else
+                        else 
                         {
                             //where does data belong
                             //create new OverFlowBlock and insert data there
@@ -343,9 +429,11 @@ namespace Dynamic_Hash.Hashing
                             end = true;
                             if (LeftSon.CountOfRecords > 0 && RightSon.CountOfRecords > 0)
                             {
+                                RightSon.Index = ReturnFreeAdress(true);
+                                LeftSon.Index = ReturnFreeAdress(true);
 
-                                ChooseIndex(RightSon, blockRightSon);
-                                ChooseIndex(LeftSon, blockLeftSon);
+                                //ChooseIndex(RightSon, blockRightSon);
+                                //ChooseIndex(LeftSon, blockLeftSon);
                                 //LeftSon.Index = newFreeIndex;
                                 //LeftSon.CountOfRecords = blockLeftSon.ValidRecordsCount;
                                 //RightSon.Index = oldFreeIndex;
@@ -361,7 +449,8 @@ namespace Dynamic_Hash.Hashing
                             }
                             else if (LeftSon.CountOfRecords > 0)
                             {
-                                ChooseIndex(LeftSon, blockLeftSon);
+                                LeftSon.Index = ReturnFreeAdress(true);
+                                //ChooseIndex(LeftSon, blockLeftSon);
                                 WriteBackToFile(LeftSon.Index, blockLeftSon, true);
                                 noOfRecords++;
                                 Trace.WriteLine("Written to a new address." + blockLeftSon.ToString());
@@ -369,7 +458,8 @@ namespace Dynamic_Hash.Hashing
                             }
                             else if (RightSon.CountOfRecords > 0)
                             {
-                                ChooseIndex(RightSon, blockRightSon);
+                                RightSon.Index = ReturnFreeAdress(true);
+                                //ChooseIndex(RightSon, blockRightSon);
                                 WriteBackToFile(RightSon.Index, blockRightSon, true);
                                 noOfRecords++;
                                 Trace.WriteLine("Written to a new address." + blockRightSon.ToString());
@@ -389,13 +479,27 @@ namespace Dynamic_Hash.Hashing
             return true;
         }
 
-        private void ChooseIndex(ExternalNode node, Block<T> block) 
+       /* private void ChooseIndex(ExternalNode node, Block<T> block) 
         {
-            if (availableIndexes.Count > 0)
+            if (EmptyBlocksIndex != -1)
             {
-                var newIndex = availableIndexes.ElementAt(0);
-                availableIndexes.RemoveAt(0);
-                node.Index = newIndex;
+                var index = EmptyBlocksIndex;
+                var firstBlock = ReadBlockFromFile(EmptyBlocksIndex, true);
+
+                if (firstBlock.ChainIndexAfter != -1)
+                {
+                    var next = ReadBlockFromFile(firstBlock.ChainIndexAfter, true);
+                    next.ChainIndexBefore = -1;
+                    EmptyBlocksIndex = firstBlock.ChainIndexAfter;
+                    WriteBackToFile(firstBlock.ChainIndexAfter, next, true);
+                    node.Index = index;
+                }
+                else
+                {
+                    //its first one in chaining
+                    node.Index = EmptyBlocksIndex;
+                    EmptyBlocksIndex = -1;
+                }
             }
             else
             {
@@ -404,7 +508,7 @@ namespace Dynamic_Hash.Hashing
                 File.SetLength(File.Length + block.getSize());
                 node.Index = (int)newIndex;
             }
-        }
+        }*/
 
         private void AddToOverflowBlock(Block<T> block, T data) 
         {
@@ -415,19 +519,14 @@ namespace Dynamic_Hash.Hashing
             int index = block.OfindexNext; //index of the start of this overflow block sequence
             if (block.OfindexNext == -1)
             {
-                if (availableIndexesOverflow.Count > 0)
-                {
-                    var newIndex = availableIndexesOverflow.ElementAt(0);
-                    availableIndexesOverflow.RemoveAt(0);
-                    block.OfindexNext = newIndex;
-                }
-                else
-                {
-                    //nastavenie adresy na koniec suboru
+
+                block.OfindexNext = ReturnFreeAdress(false);
+
+                 /*   //nastavenie adresy na koniec suboru
                     var newIndex = FileOverflow.Length;
                     FileOverflow.SetLength(FileOverflow.Length + block.getSize());
-                    block.OfindexNext = (int)newIndex;
-                }
+                    block.OfindexNext = (int)newIndex;*/
+                
 
                 var blockOverflow = new Block<T>(BlockFactorOverflow);
                 if (!blockOverflow.Insert(data))
@@ -469,21 +568,14 @@ namespace Dynamic_Hash.Hashing
                 }
                 else //create new block
                 {
-                    if (availableIndexesOverflow.Count > 0)
-                    {
-                        var newIndex = availableIndexesOverflow.ElementAt(0);
-                        availableIndexesOverflow.RemoveAt(0);
-                        //block.OfindexNext = newIndex;
-                        indexes.Add(newIndex);
-                    }
-                    else
-                    {
-                        //nastavenie adresy na koniec suboru
+
+                    int newIndex = ReturnFreeAdress(false);
+                     /*   //nastavenie adresy na koniec suboru
                         var newIndex = FileOverflow.Length;
                         FileOverflow.SetLength(FileOverflow.Length + block.getSize());
-                        //block.OfindexNext = (int)newIndex;
+                        //block.OfindexNext = (int)newIndex;*/
                         indexes.Add((int)newIndex);
-                    }
+                    
 
                     var blockOverflow = new Block<T>(BlockFactorOverflow);
                     if (!blockOverflow.Insert(data))
@@ -516,17 +608,59 @@ namespace Dynamic_Hash.Hashing
             }
         }
 
-        private ExternalNode ShortenBranch(ExternalNode node, Block<T> block, ExternalNode brotherNode) 
+        private ExternalNode ShortenBranch(ExternalNode node, Block<T> block, ExternalNode brotherNode, Block<T> brotherBlock) 
         {
-            /*var end = false;
+            var end = false;
             while (!end)
-            {*/
-
-                /*if (end)
+            {
+                for (int i = 0; i < brotherBlock.ValidRecordsCount; i++)
                 {
-                    return;
-                }*/
-                ExternalNode newNode = new ExternalNode(-1, 0);
+                    if (!block.Insert(brotherBlock.Records[i]))
+                    {
+                        Trace.WriteLine("Error when shortening branches.");
+                    }
+                    AddToEmptyBlock(brotherNode.Index, brotherBlock, true);
+                    //add empty brotherBlock to empty blocks manager
+                    node.CountOfRecords++;
+                }
+                //cut parent and brotherNode
+
+                //TODO: check for root
+                var newParent = node.Parent.Parent;
+
+                if (node.Parent == newParent.RightNode)
+                {
+                    newParent.RightNode = node;
+                    node.Parent = newParent;
+                }
+                else
+                {
+                    newParent.LeftNode = node;
+                    node.Parent = newParent;
+                }
+                //nodes index stays the same
+
+                WriteBackToFile(node.Index, block, true);
+
+                //check for repeating
+
+                brotherNode = Trie.findBrother(node);
+                if (brotherNode == null)
+                {
+                    return node;
+                }
+                brotherBlock = ReadBlockFromFile(brotherNode.Index, true);
+                if (brotherBlock.OfindexNext != -1)
+                {
+                    return node;
+                }
+                if (node.CountOfRecords + brotherNode.CountOfRecords > BlockFactor)
+                {
+                    end = true;
+                }
+            }
+            return null;
+             /*   ExternalNode newNode = new ExternalNode(-1, 0);
 
                 var newBlock = new Block<T>(BlockFactor);
 
@@ -598,7 +732,6 @@ namespace Dynamic_Hash.Hashing
                 var newIndex = availableIndexes.ElementAt(0);
                 availableIndexes.RemoveAt(0);
 
-
                 var Parent = node.Parent;
 
                 newNode.Parent = Parent;
@@ -615,95 +748,459 @@ namespace Dynamic_Hash.Hashing
 
                 WriteBackToFile(newNode.Index, newBlock, true);
 
-                return newNode;
-                /*brotherNode = Trie.findBrother(newNode);
-                if (brotherNode != null && brotherNode.Index!=-1)
-                {
-                    node = newNode;
-                }
-                else
-                {
-                    end = true;
-                }*/
-            //}
+                return newNode;*/
         }
 
-        public bool Remove(T data) 
+        //manazment volnych blokov
+        //- volne bloky mam zretazene 
+        //ak mam nejaky uvolneny od konca tak ho vymazem
+        //musim prejst vsetky volne bloky a pozriet ci sa nachadza nejaky na konci suboru
+        //vymazat ho a prenastavit nasledovnika a predchodcu
+        //cyklus
+
+        public void AddToEmptyBlock(int indexFromNode, Block<T> block,bool main) 
         {
-
-            var pom = Find(data);
-            if (pom == null)
+            if (main)
             {
-                Trace.WriteLine("Data not in file! - Error Remove");
-            }
+                var indexes =  new List<int>();
+                indexes.Add(EmptyBlocksIndex);
+                //ak nie je ziadny block este prazdny pridam ho na zaciatok
+                if (EmptyBlocksIndex == -1)
+                {
+                    //start of the chaining
+                    block.ChainIndexBefore = -1;
 
+                    //TODO: block has chaining with other blocks in OF - change this
+
+                    if (block.OfindexNext == -1) //no next blocks in OF
+                    {
+                        //zmensenie stromu
+                        //block is empty add to empty blocks in main file
+
+                        EmptyBlocksIndex = indexFromNode;
+                        WriteBackToFile(indexFromNode, block, true);
+                        return;
+                        //shorten the tree upwards
+
+                    }
+                    else
+                    {
+                        //TODO : shrink/striasanie do main file z OF
+                        return;
+                    }
+
+                }
+                //we continue in chaining - linking with the last one
+                //first one linked
+                
+                var pomBlock = ReadBlockFromFile(EmptyBlocksIndex, true);
+                indexes.Add(pomBlock.ChainIndexAfter); //2nd block in chaining
+                if (pomBlock.ChainIndexAfter == -1)
+                {
+                    //there is a chaining
+                    pomBlock.ChainIndexAfter = indexFromNode;
+                    block.ChainIndexBefore = EmptyBlocksIndex;
+                    WriteBackToFile(indexFromNode,block, true);
+                    WriteBackToFile(EmptyBlocksIndex, pomBlock, true);
+                    return;
+                }
+                while (true)
+                {
+                    pomBlock = ReadBlockFromFile(pomBlock.ChainIndexAfter,true);
+                    indexes.Add(pomBlock.ChainIndexAfter);
+                    if (pomBlock.ChainIndexAfter == -1)
+                    {
+                        //end , chain here
+                        break;
+                    }
+                    //continue
+                }
+                pomBlock.ChainIndexAfter = indexFromNode;
+                block.ChainIndexBefore = indexes[indexes.Count-3]; //need to remember from array
+                WriteBackToFile(indexFromNode,block, true);
+                return;
+            }
+            else
+            {
+                var indexes = new List<int>();
+                indexes.Add(EmptyBlocksIndexOverflow);
+                //ak nie je ziadny block este prazdny pridam ho na zaciatok
+                if (EmptyBlocksIndexOverflow == -1)
+                {
+                    if (block.OfindexNext == -1) //no next blocks 
+                    {
+                        //check before
+                        if (block.OfIndexBefore != -1) //if its starting block of the OF == -1 we do not have to do anything
+                        {
+                            //to block before remove the block index after
+                            var blockBefore = ReadBlockFromFile(block.OfIndexBefore, false);
+                            blockBefore.OfindexNext = -1;
+                            WriteBackToFile(block.OfIndexBefore, blockBefore, false);
+                        }
+                    }
+                    else
+                    {
+                        //need to find block before and block next and join them without this empty block
+
+                        var blockBefore = ReadBlockFromFile(block.OfIndexBefore, false);
+                        var blockNext = ReadBlockFromFile(block.OfindexNext, false);
+
+                        blockBefore.OfindexNext = block.OfindexNext;
+                        blockNext.OfIndexBefore = block.OfIndexBefore;
+
+                        WriteBackToFile(block.OfIndexBefore, blockBefore, false);
+                        WriteBackToFile(block.OfindexNext, blockNext, false);
+
+                    }
+                    //start of the chaining
+                    block.ChainIndexBefore = -1;
+                    block.OfIndexBefore = -1;
+                    block.OfindexNext = -1;
+                    //will be written on address _emptyBlockIndex
+                    EmptyBlocksIndexOverflow = indexFromNode; //its not index from note but index from chaining of blocks in OF file
+                    WriteBackToFile(indexFromNode, block, false);
+                    return;
+                }
+                //we continue in chaining - linking with the last one
+                //first block of the chaining
+                var pomBlock = ReadBlockFromFile(EmptyBlocksIndexOverflow, false);
+                indexes.Add(pomBlock.ChainIndexAfter); //2nd block in chaining
+                if (pomBlock.ChainIndexAfter == -1)
+                {
+                    //there is a chaining
+                    pomBlock.ChainIndexAfter = indexFromNode;
+                    block.ChainIndexBefore = EmptyBlocksIndexOverflow;
+
+                    if (block.OfIndexBefore != -1)
+                    {
+                        if (block.OfindexNext != -1)
+                        {
+                            //connect both sides
+                            var blockBefore = ReadBlockFromFile(block.OfIndexBefore, false);
+                            var blockAfter = ReadBlockFromFile(block.OfindexNext, false);
+                            blockAfter.OfIndexBefore = block.OfIndexBefore;
+                            blockBefore.OfindexNext = block.OfindexNext;
+                            WriteBackToFile(block.OfindexNext, blockAfter, false);
+                            WriteBackToFile(block.OfIndexBefore, blockBefore, false);
+                            block.OfIndexBefore = -1;
+                            block.OfindexNext = -1;
+                        }
+                        else
+                        {
+                            var blockBefore = ReadBlockFromFile(block.OfIndexBefore, false);
+                            blockBefore.OfindexNext = -1;
+                            WriteBackToFile(block.OfIndexBefore, blockBefore, false);
+                            block.OfIndexBefore = -1;
+                        }
+                        
+                    }
+
+                    WriteBackToFile(indexFromNode, block, false);
+                    WriteBackToFile(EmptyBlocksIndexOverflow, pomBlock, false);
+                    return;
+                }
+                while (true)
+                {
+                    pomBlock = ReadBlockFromFile(pomBlock.ChainIndexAfter, false);
+                    indexes.Add(pomBlock.ChainIndexAfter);
+                    if (pomBlock.ChainIndexAfter == -1)
+                    {
+                        //end , chain here
+                        break;
+                    }
+                    //continue
+                }
+                pomBlock.ChainIndexAfter = indexFromNode;
+                block.ChainIndexBefore = indexes[indexes.Count - 2]; //need to remember from array
+
+                if (block.OfIndexBefore != -1)
+                {
+                    if (block.OfindexNext != -1)
+                    {
+                        //connect both sides
+                        var blockBefore = ReadBlockFromFile(block.OfIndexBefore, false);
+                        var blockAfter = ReadBlockFromFile(block.OfindexNext, false);
+                        blockAfter.OfIndexBefore = block.OfIndexBefore;
+                        blockBefore.OfindexNext = block.OfindexNext;
+                        WriteBackToFile(block.OfindexNext, blockAfter, false);
+                        WriteBackToFile(block.OfIndexBefore, blockBefore, false);
+                        block.OfIndexBefore = -1;
+                        block.OfindexNext = -1;
+                    }
+                    else
+                    {
+                        var blockBefore = ReadBlockFromFile(block.OfIndexBefore, false);
+                        blockBefore.OfindexNext = -1;
+                        WriteBackToFile(block.OfIndexBefore, blockBefore, false);
+                        block.OfIndexBefore = -1;
+                    }
+
+                }
+
+                WriteBackToFile(indexFromNode, block, false);
+                WriteBackToFile(block.ChainIndexBefore, pomBlock, false);
+                return;
+            }
+        }
+
+        //stiasanie - iba ked sa mi realne uvolni jeden blok v preplnovacom subore
+
+        //striasam aj -1
+        public bool RemoveNew(T data) 
+        {
             int level = -1;
             var dataHash = data.getHash(CountHashFun);
             var node = Trie.getExternalNode(dataHash, out level);
 
             var block = ReadBlockFromFile(node.Index, true);
-            if (block.Remove(data))
+            for (int i = 0; i < block.ValidRecordsCount; i++)
             {
-                Trace.WriteLine("succesfully removed:" + data.ToString());
-                node.CountOfRecords--;
-                noOfRecords--;
-                //WriteBackToFile(node.Index, block);
-                if (node.Parent == Trie.Root)
+                if (block.Records[i].MyEquals(data))
                 {
-                    if (node.CountOfRecords == 0)
+                    if (!block.Remove(data))
                     {
-                        ShortenFile(node, block);
+                        Trace.WriteLine("Error - data cannot be removed.");
+                        return false;
                     }
                     else
                     {
-                        WriteBackToFile(node.Index, block, true);
-                        return true;
+                        Trace.WriteLine("Data removed from main file." + data.ToString());
                     }
-                }
-                else
-                {
-                    var end = false;
-                    while (!end)
-                    {
-                        if (end)
-                        {
-                            return true;
-                        }
+                    //skontrolovat pocet zaznamov v bloku - ak je prazdny a node.countOfRecords + brat.countofrecord < BlockFactor mozem mazat
+                    //treba kontrolovat ofindexnext lebo count of records sa ukladaju aj recordy z preplnovacieho suboru
+                    //Blok bude zaradeny do zretazenia volnych blokov v main subore
 
+                    //nema nasledovnika v OF  
+                    if (block.OfindexNext == -1)
+                    {
+                        //manazer volnych blokov
                         var brotherNode = Trie.findBrother(node);
                         if (brotherNode == null)
                         {
-                            if (node.CountOfRecords == 0)
+                            node.CountOfRecords--;
+                            if (block.ValidRecordsCount == 0)
                             {
-                                ShortenFile(node, block);
+                                AddToEmptyBlock(node.Index, block, true);
+                                return true;
                             }
-                            else
-                            {
-                                WriteBackToFile(node.Index, block, true);
-                                //AvailableIndexes.Add(node.Index);
-                                //node.Index = -1;
-                            }
+                            //WriteBackToFile(node.Index, block, true);
+                            //deleted, nothing else to do
+                            return true;
+                        }
+                        var brotherBlock = ReadBlockFromFile(brotherNode.Index, true);
+                        if (brotherBlock.OfindexNext != -1)
+                        {
+                            //has to end, cant join nodes who has records in overflowing file
+                            node.CountOfRecords--;
+                            WriteBackToFile(node.Index, block, true);
+                            //deleted, nothing else to do
                             return true;
 
                         }
-                        if (brotherNode.CountOfRecords + node.CountOfRecords <= BlockFactor && node.Parent != Trie.Root && brotherNode.Index != -1)
+                        //last chance is to count the records and see if it nodes can be joined
+                        if (brotherNode.CountOfRecords + node.CountOfRecords <= BlockFactor)
                         {
-                           node = ShortenBranch(node, block, brotherNode);
-                            block = ReadBlockFromFile(node.Index, true);
+                            //merge upwards + everytime block is deleted that has got index add to empty blocks
+                            ShortenBranch(node, block, brotherNode, brotherBlock);
+                            return true;
+                        }
+                        else 
+                        {
+                            var countOfRecords = "More than BlockFactor";
+                        }
+                    }
+                    //je nejaky next v OF + tento je uz empty
+                    //striast
+                    node.CountOfRecords--;
+                    if (node.CountOfRecords == 0 || block.ValidRecordsCount == 0)
+                    {
+                        //mam miesto na strasenie
+                        Shake(node);
+                        var pom = 0;
+                    }
+                    WriteBackToFile(node.Index, block, true);
+                    return true;
+                }
+                else
+                {
+
+                }
+            }
+            //check if it belongs to overflow file
+            if (block.OfindexNext != -1)
+            {
+                while (true)
+                {
+                    var pom = block.OfindexNext;
+                    block = ReadBlockFromFile(block.OfindexNext, false);
+                    for (int i = 0; i < block.ValidRecordsCount; i++)
+                    {
+                        if (block.Records[i].MyEquals(data))
+                        {
+                            if (!block.Remove(data))
+                            {
+                                Trace.WriteLine("Error - data cannot be removed.");
+                                return false;
+                            }
+                            else
+                            {
+                                if (block.ValidRecordsCount == 0)
+                                {
+
+                                    AddToEmptyBlock(pom, block, false);
+                                    return true;
+                                    
+                                }
+                                Trace.WriteLine("Data removed from overflow file." + data.ToString());
+                            }
+                            //vymazem jeden zaznam - niekde by sa zisla kontrola ze ak vymazem BF count mozem striasat
+                            //kontrola, start with index from node
+                            Shake(node);
+
+
+                            WriteBackToFile(pom, block, false);
+                            return true;
+                        }
+                    }
+                    if (block.OfindexNext == -1)
+                    {
+                        //uz nieje dalsi block tak sa data nenasli
+                        return false;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private void Shake(ExternalNode node) 
+        {
+            //from node to the end of the OF file count valid records and potential valid records
+            int validsum = 0;
+            int fullsize = 0;
+            int countOFblocks = 0;
+
+            List<Block<T>> blocks = new List<Block<T>>();
+            List<int> indexes = new List<int>();
+
+            var block = ReadBlockFromFile(node.Index, true);
+            blocks.Add(block);
+            indexes.Add(node.Index);
+            validsum += block.ValidRecordsCount;
+            fullsize += block.BlockFactor;
+
+            if (block.OfindexNext != -1)
+            {
+                while (true)
+                {
+                    indexes.Add(block.OfindexNext);
+                    block = ReadBlockFromFile(block.OfindexNext, false);
+                    blocks.Add(block);  
+                    validsum += block.ValidRecordsCount;
+                    fullsize += block.BlockFactor;
+                    countOFblocks++;
+                    if (block.OfindexNext == -1)
+                    {
+                        break;
+                    }
+                }
+
+                var result = fullsize - validsum;
+                //result rata aj s poslednym blokom - jeho volne miesto treba odratat
+                result -= BlockFactorOverflow - block.ValidRecordsCount;
+
+                if (result >= BlockFactorOverflow) //usetri jeden block v OF file, mozem posuvat
+                {
+                    //block.Records -> move from the begining of main file
+                    List<T> listToReinsert = new List<T>();
+                    var count = 0;
+                    var remove = 0;
+                    for (int i = 1; i <= blocks.Count; i++)
+                    {
+                        for (int j = 0; j < blocks[blocks.Count - i].ValidRecordsCount; j++)
+                        {
+                            
+                            listToReinsert.Add(blocks[blocks.Count - i].Records[j]);
+                            blocks[blocks.Count - i].ValidRecordsCount--;
+                            count++;
+                            if (count == result)
+                            {
+                                break;
+                            }
+                        }
+                        if (count == result)
+                        {
+                            break;
+                        }
+
+                        remove++;
+                    }
+
+                    for (int i = 0; i < remove; i++)
+                    {
+                        //remove blocks from behind
+                        if (blocks.Count == 1)
+                        {
+                            //this should not happen
+                            AddToEmptyBlock(indexes[indexes.Count - 1], blocks[blocks.Count - 1], true);
                         }
                         else
                         {
-                            end = true;
+                            AddToEmptyBlock(indexes[indexes.Count - 1], blocks[blocks.Count - 1], false);
+                            indexes.RemoveAt(indexes.Count - 1);
+                            blocks.RemoveAt(blocks.Count - 1);
                         }
-
+                    }
+                    //to last block remove ofindexnext 
+                    if (blocks.Count == 1)
+                    {
+                        blocks[1].OfindexNext = -1;
+                    }
+                    else
+                    {
+                        blocks[blocks.Count - 1].OfindexNext = -1;
                     }
 
 
-                }
+                    //i took 'result' number of objects that needs to be reinserted
 
+                    if (listToReinsert.Count > 0)
+                    {
+                        if (blocks[0].ValidRecordsCount < BlockFactor)
+                        {
+                            blocks[0].Insert(listToReinsert[0]);
+                            listToReinsert.RemoveAt(0);
+                        }
+
+                        while (listToReinsert.Count>0)
+                        {
+                            for (int i = 1; i < blocks.Count; i++)
+                            {
+                                while (blocks[i].ValidRecordsCount < BlockFactorOverflow)
+                                {
+                                    blocks[i].Insert(listToReinsert[0]);
+                                    listToReinsert.RemoveAt(0);
+
+                                    WriteBackToFile(indexes[i], blocks[i], false);
+                                    if (listToReinsert.Count == 0)
+                                    {
+                                        if (i != (blocks.Count-1))
+                                        {
+                                            WriteBackToFile(indexes[indexes.Count - 1], blocks[blocks.Count - 1], false);
+                                        }
+
+                                        return;
+                                        //write back the last block with changed index
+                                        
+                                        
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                }
             }
-            return false;
-            Trace.WriteLine("Error when removing data.");
+        
         }
 
         private void ShortenFile(ExternalNode node, Block<T> block) 
@@ -712,18 +1209,14 @@ namespace Dynamic_Hash.Hashing
             if (node.Index  == File.Length - block.getSize()) //if the node has the last address
             {
                 pom -= block.getSize();
-                //do not have to read all block from the end, just see the free indexes
-                while (AvailableIndexes.Contains((int)pom))
-                {
-                    pom-= block.getSize();
-                    AvailableIndexes.Remove((int)pom);
-                }
+
+                //TODO : add block to chaining
                 //remove from the end
                 File.SetLength(pom);
             }
             else
             {
-                availableIndexes.Add(node.Index);
+                //availableIndexes.Add(node.Index);
                 WriteBackToFile(node.Index,block,true);
             }
             node.Index = -1;
@@ -895,6 +1388,91 @@ namespace Dynamic_Hash.Hashing
                     writer.WriteLine(record.ToString());
                 }
             }
+        }
+
+        public string GetString(bool mainFile) 
+        {
+            StringBuilder sb = new StringBuilder();
+            byte[] bytes;
+            if (mainFile)
+            {
+                bytes = new byte[File.Length];
+                File.Seek(0, SeekOrigin.Begin);
+                File.Read(bytes);
+
+                for (int i = 0; i < bytes.Length; i += BlockSize)
+                {
+                    byte[] actualBytes = new byte[BlockSize];
+
+                    // Copy a block-sized chunk of data to actualBytes
+                    for (int j = 0; j < BlockSize && (i + j) < bytes.Length; j++)
+                    {
+                        actualBytes[j] = bytes[i + j];
+                    }
+                    var block = new Block<T>(BlockFactor);
+                    block.fromByteArray(actualBytes);
+                    sb.Append("\n----------------------------------------\n");
+                    sb.Append("Address: " + i + "\n");
+                    if (EmptyBlocksIndex == i)
+                    {
+                        sb.Append("START of the chaining of empty blocks.\n");
+                        sb.Append(block.ToString(BlockFactor, true));
+                    }
+                    else
+                    {
+                        if (block.ChainIndexAfter != -1 || block.ChainIndexBefore != -1)
+                        {
+                            sb.Append(block.ToString(BlockFactor, true));
+                        }
+                        else
+                        {
+                            sb.Append(block.ToString(BlockFactor, false));
+                        }
+                    }
+                    
+                }
+            }
+            else
+            {
+                bytes = new byte[FileOverflow.Length];
+                FileOverflow.Seek(0, SeekOrigin.Begin);
+                FileOverflow.Read(bytes);
+
+                for (int i = 0; i < bytes.Length; i += BlockSizeOF)
+                {
+                    byte[] actualBytes = new byte[BlockSizeOF];
+
+                    // Copy a block-sized chunk of data to actualBytes
+                    for (int j = 0; j < BlockSizeOF && (i + j) < bytes.Length; j++)
+                    {
+                        actualBytes[j] = bytes[i + j];
+                    }
+                    var block = new Block<T>(BlockFactorOverflow);
+                    block.fromByteArray(actualBytes);
+                    sb.Append("\n----------------------------------------\n");
+                    sb.Append("Address: " + i + "\n");
+                    sb.Append("Adress to block before: " + block.OfIndexBefore.ToString() + "\n");
+                    if (EmptyBlocksIndexOverflow == i)
+                    {
+                        sb.Append("START OF CHAINING EMPTY BLOCKS\n");
+                    }
+
+                    if (block.ChainIndexBefore!= -1 || block.ChainIndexAfter != -1)
+                    {
+                        sb.Append(block.ToString(BlockFactorOverflow,true));
+                    }
+                    else
+                    {
+                        sb.Append(block.ToString(BlockFactorOverflow,false));
+                    }
+                    
+
+                }
+            }
+            
+
+
+            return sb.ToString();
         }
 
 

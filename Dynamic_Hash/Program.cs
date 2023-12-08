@@ -96,7 +96,7 @@ namespace Dynamic_Hash
 */
 
             DynamicHashingTests dynTest = new DynamicHashingTests();
-            Application.Run(new Form1(dynTest));
+            Application.Run(new MainForm(dynTest));
 
             
         }

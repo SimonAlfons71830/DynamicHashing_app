@@ -222,18 +222,19 @@ namespace Dynamic_Hash.Tests
             int removeIndex = random.Next(usedKeys.Count);
             Property removeData = usedKeys[removeIndex];
 
-            if (dynHash.Remove(removeData))
+            if (dynHash.RemoveNew(removeData))
             {
-                if (oldSize > dynHash.noOfRecords)
+                var data = dynHash.Find(removeData);
+                if (data != null) 
+                {
+                    failedRemove++;
+                    failed++;
+                }
+                else
                 {
                     passed++;
                     passedRemove++;
                     usedKeys.RemoveAt(removeIndex);
-                }
-                else
-                {
-                    failedRemove++;
-                    failed++;
                 }
                 /*var prop = dynHash.Find(removeData);
                 if (prop== null)
@@ -289,7 +290,7 @@ namespace Dynamic_Hash.Tests
             this.failed = 0;
 
             dynHash.Trie = new Trie.Trie();
-            dynHash.AvailableIndexes.Clear();
+            //dynHash.AvailableIndexes.Clear();
             dynHash.File.Close();
             try
             {

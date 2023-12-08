@@ -19,6 +19,11 @@ namespace Dynamic_Hash.Hashing
         private int _ofindexNext;
         private int _ofIndexBefore;
 
+        //indexes for chaining with empty blocks
+        private int _chainIndexBefore;
+        private int _chainIndexAfter;
+
+
         public Block(int blockFactor)
         {
             BlockFactor = blockFactor;
@@ -27,6 +32,9 @@ namespace Dynamic_Hash.Hashing
             ValidRecordsCount = 0;
             OfindexNext = -1;
             OfIndexBefore = -1;
+            ChainIndexAfter = -1;
+            ChainIndexBefore = -1;
+
 
             for (int i = 0; i < BlockFactor; i++)
             {
@@ -59,6 +67,8 @@ namespace Dynamic_Hash.Hashing
         }
         public int OfindexNext { get => _ofindexNext; set => _ofindexNext = value; }
         public int OfIndexBefore { get => _ofIndexBefore; set => _ofIndexBefore = value; }
+        public int ChainIndexBefore { get => _chainIndexBefore; set => _chainIndexBefore = value; }
+        public int ChainIndexAfter { get => _chainIndexAfter; set => _chainIndexAfter = value; }
 
         public bool Insert(T record)
         {
@@ -109,6 +119,8 @@ namespace Dynamic_Hash.Hashing
                     Records.Add(record);
                 }
                 OfindexNext = reader.ReadInt32();
+                ChainIndexBefore = reader.ReadInt32();
+                ChainIndexAfter = reader.ReadInt32();
             }
         }
 
@@ -123,6 +135,9 @@ namespace Dynamic_Hash.Hashing
             size += Activator.CreateInstance<T>().getSize() * BlockFactor;
             //index of the owerflowfile
             size += sizeof(int);
+
+            //chain indexes
+            size += sizeof(int) * 2;
 
             return size;
 
@@ -144,13 +159,16 @@ namespace Dynamic_Hash.Hashing
                 }
 
                 writer.Write(OfindexNext);
+                writer.Write(ChainIndexBefore);
+                writer.Write(ChainIndexAfter);
+
                 // Get the byte array from the stream
                 return stream.ToArray();
             }
         }
 
 
-        public override string ToString()
+        public string ToString(int BlockFactor, bool empty)
         {
             StringBuilder sb = new StringBuilder();
             sb.Append($"[{ValidRecordsCount}/{BlockFactor} records,");
@@ -159,10 +177,19 @@ namespace Dynamic_Hash.Hashing
             {
 
                 T record = Records[i];
-                sb.Append($" record{i + 1}: {record.ToString()}, ");
+                sb.Append($" \nREC.{i + 1}: {record.ToString()}, ");
             }
 
-            sb.Append($"Next Block in OF : {OfindexNext}");
+            sb.Append($"\nNext Block in OF : {OfindexNext}");
+
+            if (empty)
+            {
+                sb.Append("EMPTY BLOCK\n");
+
+                sb.Append($"\tBefore : {this.ChainIndexBefore}\n");
+                sb.Append($"\tAfter : {this.ChainIndexAfter}\n");
+            }
+            
             sb.Append("]");
 
             return sb.ToString();

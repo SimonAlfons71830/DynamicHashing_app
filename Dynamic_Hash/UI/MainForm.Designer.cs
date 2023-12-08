@@ -1,6 +1,6 @@
 ﻿namespace Dynamic_Hash
 {
-    partial class Form1
+    partial class MainForm
     {
         /// <summary>
         ///  Required designer variable.
@@ -43,6 +43,7 @@
             label6 = new Label();
             hashCount_no = new NumericUpDown();
             label7 = new Label();
+            toStrintg_button = new Button();
             ((System.ComponentModel.ISupportInitialize)insert_no).BeginInit();
             ((System.ComponentModel.ISupportInitialize)find_no).BeginInit();
             ((System.ComponentModel.ISupportInitialize)noRemove).BeginInit();
@@ -183,11 +184,22 @@
             label7.TabIndex = 14;
             label7.Text = "Hash count";
             // 
-            // Form1
+            // toStrintg_button
+            // 
+            toStrintg_button.Location = new Point(516, 186);
+            toStrintg_button.Name = "toStrintg_button";
+            toStrintg_button.Size = new Size(138, 33);
+            toStrintg_button.TabIndex = 15;
+            toStrintg_button.Text = "To String";
+            toStrintg_button.UseVisualStyleBackColor = true;
+            toStrintg_button.Click += toStrintg_button_Click;
+            // 
+            // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(688, 518);
+            Controls.Add(toStrintg_button);
             Controls.Add(label7);
             Controls.Add(hashCount_no);
             Controls.Add(label6);
@@ -203,7 +215,7 @@
             Controls.Add(insert_no);
             Controls.Add(label1);
             Controls.Add(richTextBox1);
-            Name = "Form1";
+            Name = "MainForm";
             Text = "Form1";
             Load += Form1_Load;
             ((System.ComponentModel.ISupportInitialize)insert_no).EndInit();
@@ -233,5 +245,6 @@
         private Label label6;
         private NumericUpDown hashCount_no;
         private Label label7;
+        private Button toStrintg_button;
     }
 }

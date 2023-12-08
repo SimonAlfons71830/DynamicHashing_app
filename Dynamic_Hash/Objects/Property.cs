@@ -216,11 +216,11 @@ namespace Dynamic_Hash.Objects
         {
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"RegisterNumber: {RegisterNumber}, ");
-            sb.Append($"Description: {Description}, ");
-            sb.Append($"Coordinates: ({Coordinates.Item1.LongitudeStart}, {Coordinates.Item1.LatitudeStart}), ");
-            sb.Append($"({Coordinates.Item2.LongitudeEnd}, {Coordinates.Item2.LatitudeEnd}), ");
-            sb.Append("Lands: [");
+            sb.Append($"\n\tRegisterNumber: {RegisterNumber}, ");
+            sb.Append($"\n\tDescription: {Description}, ");
+            sb.Append($"\n\tCoordinates: ({Coordinates.Item1.LongitudeStart}, {Coordinates.Item1.LatitudeStart}), ");
+            sb.Append($"\n\t({Coordinates.Item2.LongitudeEnd}, {Coordinates.Item2.LatitudeEnd}), ");
+            sb.Append("\n\tLands: [");
 
             foreach (int landId in Lands)
             {
