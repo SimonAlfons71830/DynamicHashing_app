@@ -1,11 +1,12 @@
 ﻿using QuadTree.Hashing;
+using QuadTree.Structures;
 using System.Collections;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace Dynamic_Hash.Objects
 {
-    public class Property : IData<Property>
+    public class Property : Polygon, IData<Property>
     {
         private int _registerNumber;
         private ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) _coordinates; //?? prerobit
@@ -23,6 +24,7 @@ namespace Dynamic_Hash.Objects
         /// <param name="coordinates"></param>
         /// <param name="lands"></param>
         public Property(int registerNumber, string description, ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates, List<int> lands) 
+            :base (registerNumber, coordinates)
         {
             RegisterNumber = registerNumber;
             Description = EditDescription(description);
@@ -68,6 +70,10 @@ namespace Dynamic_Hash.Objects
             get => _lands;
             set 
             {
+                if (value==null)
+                {
+                    value = new List<int>();
+                }
                 // Take the first 6 records from the input list or fill with -1 if not full
                 _lands = value.Take(MAX_LANDS_COUNT).Concat(Enumerable.Repeat(-1, MAX_LANDS_COUNT - value.Count)).ToList();
             }
@@ -83,6 +89,7 @@ namespace Dynamic_Hash.Objects
         {
             return RegisterNumber.Equals(other.RegisterNumber);
         }
+
 
         public BitArray getHash(int count)
         {
@@ -232,6 +239,6 @@ namespace Dynamic_Hash.Objects
             return sb.ToString();
         }
 
-
+        
     }
 }

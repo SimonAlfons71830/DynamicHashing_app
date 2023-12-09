@@ -35,7 +35,6 @@ namespace Dynamic_Hash.Hashing
             ChainIndexAfter = -1;
             ChainIndexBefore = -1;
 
-
             for (int i = 0; i < BlockFactor; i++)
             {
                 Records.Add((T)Activator.CreateInstance(TypeOfData));

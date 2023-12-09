@@ -1,4 +1,5 @@
 ﻿using Dynamic_Hash.Tests;
+using QuadTree.GeoSystem;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -14,9 +15,13 @@ namespace Dynamic_Hash.UI
     public partial class ToStringMain : Form
     {
         DynamicHashingTests dynTest;
-        public ToStringMain(DynamicHashingTests dTest)
+        GeoApp geoApp;
+        bool listProperties;
+        public ToStringMain( GeoApp geoapp, bool properties)
         {
-            dynTest = dTest;
+            //dynTest = dTest;
+            this.geoApp = geoapp;
+            listProperties = properties;
             InitializeComponent();
         }
 
@@ -28,23 +33,38 @@ namespace Dynamic_Hash.UI
 
         private void endToString_button_Click(object sender, EventArgs e)
         {
-            var form = new MainForm(dynTest);
             this.Hide();
-            form.ShowDialog();
         }
 
         private void mainfile_button_Click(object sender, EventArgs e)
         {
             panelOverflowFile.Hide();
             panel_mainFile.Show();
-            mainTextBox.Text = dynTest.dynHash.GetString(true);
+            if (listProperties)
+            {
+                mainTextBox.Text = geoApp.getContentProperties(true);
+            }
+            else
+            {
+                mainTextBox.Text = geoApp.getContentLands(true);
+            }
+            
         }
 
         private void oveflowfile_button_Click(object sender, EventArgs e)
         {
             panel_mainFile.Hide();
             panelOverflowFile.Show();
-            overflowTextBox.Text = dynTest.dynHash.GetString(false);
+
+            if (listProperties)
+            {
+                overflowTextBox.Text = geoApp.getContentProperties(false);
+            }
+            else
+            {
+                overflowTextBox.Text = geoApp.getContentLands(false);
+            }
+            
         }
     }
 }

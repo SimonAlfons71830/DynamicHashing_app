@@ -1,5 +1,7 @@
 using Dynamic_Hash.Tests;
 using Dynamic_Hash.UI;
+using QuadTree.GeoSystem;
+using QuadTree.UI;
 using System.Diagnostics.PerformanceData;
 using System.Security.Policy;
 
@@ -8,9 +10,11 @@ namespace Dynamic_Hash
     public partial class MainForm : Form
     {
         DynamicHashingTests dynTest;
-        public MainForm(DynamicHashingTests dynTestH)
+        GeoApp geoApp;
+        public MainForm( GeoApp geoApp)
         {
-            dynTest = dynTestH;
+            //dynTest = dynTestH;
+            this.geoApp = geoApp;
             InitializeComponent();
         }
 
@@ -40,10 +44,17 @@ namespace Dynamic_Hash
 
         private void toStrintg_button_Click(object sender, EventArgs e)
         {
-            var form = new ToStringMain(dynTest);
+            var form = new ToStringMain(geoApp, true);
             this.Hide();
             form.ShowDialog();
-            
+
+        }
+
+        private void appbutton_Click(object sender, EventArgs e)
+        {
+            var test = new App( geoApp);
+            this.Hide();
+            test.ShowDialog();
         }
     }
 }

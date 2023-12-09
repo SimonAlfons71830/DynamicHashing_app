@@ -10,6 +10,5 @@ namespace QuadTree.Hashing
         public BitArray getHash(int count);
         //create an instance of a class
         public T createInstanceOfClass();
-
     }
 }

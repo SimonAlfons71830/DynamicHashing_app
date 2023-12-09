@@ -44,6 +44,7 @@
             hashCount_no = new NumericUpDown();
             label7 = new Label();
             toStrintg_button = new Button();
+            appbutton = new Button();
             ((System.ComponentModel.ISupportInitialize)insert_no).BeginInit();
             ((System.ComponentModel.ISupportInitialize)find_no).BeginInit();
             ((System.ComponentModel.ISupportInitialize)noRemove).BeginInit();
@@ -85,7 +86,6 @@
             find_no.Name = "find_no";
             find_no.Size = new Size(150, 27);
             find_no.TabIndex = 3;
-            find_no.Value = new decimal(new int[] { 100, 0, 0, 0 });
             // 
             // label2
             // 
@@ -173,7 +173,7 @@
             hashCount_no.Name = "hashCount_no";
             hashCount_no.Size = new Size(150, 27);
             hashCount_no.TabIndex = 13;
-            hashCount_no.Value = new decimal(new int[] { 3, 0, 0, 0 });
+            hashCount_no.Value = new decimal(new int[] { 5, 0, 0, 0 });
             // 
             // label7
             // 
@@ -194,11 +194,22 @@
             toStrintg_button.UseVisualStyleBackColor = true;
             toStrintg_button.Click += toStrintg_button_Click;
             // 
+            // appbutton
+            // 
+            appbutton.Location = new Point(13, 12);
+            appbutton.Name = "appbutton";
+            appbutton.Size = new Size(105, 31);
+            appbutton.TabIndex = 16;
+            appbutton.Text = "app";
+            appbutton.UseVisualStyleBackColor = true;
+            appbutton.Click += appbutton_Click;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(688, 518);
+            Controls.Add(appbutton);
             Controls.Add(toStrintg_button);
             Controls.Add(label7);
             Controls.Add(hashCount_no);
@@ -246,5 +257,6 @@
         private NumericUpDown hashCount_no;
         private Label label7;
         private Button toStrintg_button;
+        private Button appbutton;
     }
 }

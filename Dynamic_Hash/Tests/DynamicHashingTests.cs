@@ -28,7 +28,7 @@ namespace Dynamic_Hash.Tests
         public int pocetRemove;
         public int pocetFind;
 
-        public DynamicHashing<Property> dynHash = new DynamicHashing<Property>("hashFile", 2,5,2);
+        public DynamicHashing<Property> dynHash = new DynamicHashing<Property>("hashFile","OFHashFile", 2,5,2);
         List<Property> availableObjects = new List<Property>();
         List<Property> usedKeys = new List<Property>();
         HashSet<int> uniqueNumbers = new HashSet<int>();
@@ -118,7 +118,7 @@ namespace Dynamic_Hash.Tests
                 double startPosY = random.NextDouble() * 100;
                 string desc = listNames.ElementAt(random.Next(listNames.Count - 1));
 
-                availableObjects.Add(new Property(i, desc, ((startPosX, startPosY), (startPosX + 1, startPosY + 1)), plots));
+                availableObjects.Add(new Property(i, desc, ((startPosX, startPosY),(startPosX+1, startPosY+1)), plots));
             }
         }
 
@@ -292,7 +292,7 @@ namespace Dynamic_Hash.Tests
             dynHash.Trie = new Trie.Trie();
             //dynHash.AvailableIndexes.Clear();
             dynHash.File.Close();
-            try
+            /*try
             {
                 dynHash.File = new FileStream("hashing", FileMode.Create, FileAccess.ReadWrite);
             }
@@ -300,7 +300,7 @@ namespace Dynamic_Hash.Tests
             {
                 throw new InvalidOperationException("Error in Hashing: IO exception.", e);
             }
-
+*/
             failedObj = new List<Property>();
 
 

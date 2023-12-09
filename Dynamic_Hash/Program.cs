@@ -1,6 +1,9 @@
 using Dynamic_Hash.Hashing;
 using Dynamic_Hash.Objects;
 using Dynamic_Hash.Tests;
+using QuadTree.GeoSystem;
+using QuadTree.QTree;
+using QuadTree.UI;
 using System.Collections.Generic;
 using System.Diagnostics;
 namespace Dynamic_Hash
@@ -95,8 +98,11 @@ namespace Dynamic_Hash
             Trace.WriteLine("Test Find:" + test.passedFind+ "/" + test.pocetFind);
 */
 
-            DynamicHashingTests dynTest = new DynamicHashingTests();
-            Application.Run(new MainForm(dynTest));
+            MyQuadTree quadtree = new MyQuadTree(new Boundaries(0, 0, 500, 500), 10, 2);
+
+            //DynamicHashingTests dynTest = new DynamicHashingTests();
+            GeoApp geoapp = new GeoApp(quadtree);
+            Application.Run(new App(geoapp));
 
             
         }
