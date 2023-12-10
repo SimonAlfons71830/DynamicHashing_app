@@ -6,6 +6,7 @@ using QuadTree.UI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography.Xml;
@@ -426,6 +427,31 @@ namespace QuadTree.GeoSystem
                 var desc = ((Property)newObj).Description;
                 if (this.RemoveObj(refObj)) //_area.RemoveObject(refObj)
                 {
+                    var list = this.FindInterval(((Property)refObj)._borders);
+                    var listToChange = list.OfType<PlotOfLand>().ToList();
+
+                    var listToChangeInts = hashProperties.Find((Property)refObj).Lands;
+                    hashProperties.RemoveNew((Property)refObj);
+                    //from each list record in list remove register number
+                    foreach (var land in listToChange) 
+                    {
+                        
+                        //var hashLand = hashLands.Find((PlotOfLand)land);
+                       (Block<PlotOfLand> block, int i, int address, int file) edit = hashLands.AddDataToRecords(land);
+                        var landFromBlock = edit.block.Records[edit.i];
+                        for (int i = 0; i < landFromBlock.Properties.Count; i++)
+                        {
+                            if (landFromBlock.Properties[i] == ((Property)refObj)._registerNumber)
+                            {
+                                landFromBlock.Properties[i] = -1;
+                                hashLands.WriteBackToFile(edit.address, edit.block, edit.file == 1 ? true : false);
+                                break;
+                            }
+                        } 
+
+                    }
+
+
                     this.AddProperty(regN,desc,((Property)newObj).Coordinates);
                 }
                 //((Property)refObj).Coordinates = (new Coordinates(x0, y0, 0), new Coordinates(xk, yk, 0));
@@ -436,6 +462,30 @@ namespace QuadTree.GeoSystem
                 var desc = ((PlotOfLand)newObj).Description;
                 if (this.RemoveObj(refObj))//_area.RemoveObject(refObj)
                 {
+                    var list = this.FindInterval(((PlotOfLand)refObj)._borders);
+                    var listToChange = list.OfType<Property>().ToList();
+
+                    var listToChangeInts = hashLands.Find((PlotOfLand)refObj).Properties;
+                    hashLands.RemoveNew((PlotOfLand)refObj);
+                    //from each list record in list remove register number
+                    foreach (var property in listToChange)
+                    {
+
+                        //var hashLand = hashLands.Find((PlotOfLand)land);
+                        (Block<Property> block, int i, int address, int file) edit = hashProperties.AddDataToRecords(property);
+                        var propFromBlock = edit.block.Records[edit.i];
+                        for (int i = 0; i < propFromBlock.Lands.Count; i++)
+                        {
+                            if (propFromBlock.Lands[i] == ((PlotOfLand)refObj)._registerNumber)
+                            {
+                                propFromBlock.Lands[i] = -1;
+                                hashProperties.WriteBackToFile(edit.address, edit.block, edit.file == 1 ? true : false);
+                                break;
+                            }
+                        }
+
+                    }
+
                     this.AddPlot(regN, desc, ((PlotOfLand)newObj).Coordinates);
                 }
                 //((PlotOfLand)refObj).Coordinates = (new Coordinates(x0, y0, 0), new Coordinates(xk, yk, 0));
@@ -449,11 +499,23 @@ namespace QuadTree.GeoSystem
             {
                 ((Property)refObj).RegisterNumber = regNumber;
                 ((Property)refObj).Description = description;
+                (Block<Property> Block, int i, int address, int file) edit = hashProperties.AddDataToRecords((Property)refObj);
+
+                edit.Block.Records[edit.i].Description = description;
+
+                hashProperties.WriteBackToFile(edit.address, edit.Block, edit.file == 1 ? true : false);
+
             }
             else
             {
                 ((PlotOfLand)refObj).RegisterNumber = regNumber;
                 ((PlotOfLand)refObj).Description = description;
+
+                (Block<PlotOfLand> Block, int i, int address, int file) edit = hashLands.AddDataToRecords((PlotOfLand)refObj);
+
+                edit.Block.Records[edit.i].Description = description;
+
+                hashLands.WriteBackToFile(edit.address, edit.Block, edit.file == 1 ? true : false);
             }
         }
 
@@ -461,6 +523,7 @@ namespace QuadTree.GeoSystem
         {
             //returns the reference to a object in structure
             var _refObj = this._area.ShowObject(oldObj);
+
 
             if (_refObj != null)
             {
@@ -470,6 +533,9 @@ namespace QuadTree.GeoSystem
                     if (newObj is PlotOfLand)
                     {
                         this.ChangeKeyAttr(((PlotOfLand)_refObj), (PlotOfLand)newObj);
+
+
+
                     }
                     else
                     {

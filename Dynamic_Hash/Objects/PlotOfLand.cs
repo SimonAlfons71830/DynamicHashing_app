@@ -192,6 +192,25 @@ namespace Dynamic_Hash.Objects
             set => _description = value;
         }
 
+        public string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append($"\n\tRegisterNumber: {RegisterNumber}, ");
+            sb.Append($"\n\tDescription: {Description}, ");
+            sb.Append($"\n\tCoordinates: ({Coordinates.Item1.LongitudeStart}, {Coordinates.Item1.LatitudeStart}), ");
+            sb.Append($"\n\t({Coordinates.Item2.LongitudeEnd}, {Coordinates.Item2.LatitudeEnd}), ");
+            sb.Append("\n\tLands: [");
+
+            foreach (int propId in Properties)
+            {
+                sb.Append($"{propId}, ");
+            }
+
+            sb.Append("]");
+
+            return sb.ToString();
+        }
 
 
     }

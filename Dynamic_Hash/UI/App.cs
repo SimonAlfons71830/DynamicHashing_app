@@ -431,9 +431,37 @@ namespace QuadTree.UI
 
             var boolpom = int.TryParse(registerNumberPlot_label.Text, out int rn);
 
-            bool attrChanged = originalPLOTRegisterNumber != rn ||
+            bool attrChanged = 
                 originalPLOTDescription != descEditPlot.Text;
 
+            var changed = this._app.EditObject(originalPlot,
+               new PlotOfLand(rn, descEditPlot.Text,
+               (((double)startPosEditPlotX.Value, (double)startPosEditPlotY.Value),
+               ((double)endPosEditPlotX.Value, (double)endPosEditPlotY.Value)), properties: null),
+               keyAttrChanged);
+
+            if (changed)
+            {
+                MessageBox.Show("Attributes changed.");
+                dataGridEditDelete.Rows.Remove(selectedRowProp);
+                DataRow newRow = dataWithRangeSearch.NewRow();
+                newRow[0] = rn;
+                newRow[1] = descEditPlot.Text;
+                newRow[2] = "Property";
+                newRow[3] = ((double, double))(startPosEditPlotX.Value, startPosEditPlotY.Value);
+                newRow[4] = ((double, double))(endPosEditPlotX.Value, endPosEditPlotY.Value);
+
+                dataWithRangeSearch.Rows.Add(newRow);
+                dataGridEditDelete.Refresh();
+            }
+            else
+            {
+                MessageBox.Show("Failed changing attributes.");
+            }
+            panelPlot.Hide();
+
+
+/*
             if (!keyAttrChanged && attrChanged)
             {
                 originalPlot.Description = descEditPlot.Text;
@@ -459,7 +487,7 @@ namespace QuadTree.UI
                     dataWithRangeSearch.Rows.Add(newRow);
                     dataGridEditDelete.Refresh();
                 }
-            }
+            }*/
 
             panelPlot.Hide();
         }
@@ -483,9 +511,6 @@ namespace QuadTree.UI
             var boolpom = int.TryParse(registerNumberProp_label.Text, out int rn);
 
             bool attrChanged =  originalPROPDescription != descBoxEditProp.Text;
-
-
-
 
             var changed = this._app.EditObject(originalProp,
                new Property(rn, descBoxEditProp.Text,
