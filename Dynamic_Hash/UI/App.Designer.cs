@@ -248,7 +248,7 @@
             menupanel.Dock = DockStyle.Left;
             menupanel.Location = new Point(0, 0);
             menupanel.Name = "menupanel";
-            menupanel.Size = new Size(191, 679);
+            menupanel.Size = new Size(191, 698);
             menupanel.TabIndex = 140;
             // 
             // label15
@@ -1659,18 +1659,18 @@
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1258, 679);
+            ClientSize = new Size(1258, 698);
             Controls.Add(menupanel);
-            Controls.Add(panelDataEditDel);
             Controls.Add(panelSeedApp);
             Controls.Add(panelProp);
             Controls.Add(panelPlot);
-            Controls.Add(QuadPanel);
-            Controls.Add(panelSearchForProp);
             Controls.Add(panelSettings);
             Controls.Add(panelAddPlot);
             Controls.Add(panelAddProp);
             Controls.Add(panelGiveRange);
+            Controls.Add(panelSearchForProp);
+            Controls.Add(panelDataEditDel);
+            Controls.Add(QuadPanel);
             Name = "App";
             StartPosition = FormStartPosition.CenterParent;
             Text = "Reset Tree";

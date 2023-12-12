@@ -34,7 +34,6 @@ namespace Dynamic_Hash.Hashing
         public int noOfRecords;
 
 
-        //TODO: count of records navysovat aj pri pridavani recordu do bloku v preplnovacom subore ??
         public DynamicHashing(string fileName, string OFfilename, int blockFactor, int blockFactorOverflow, int countOfHashFunc)
         {
             BlockFactor = blockFactor;
@@ -274,23 +273,44 @@ namespace Dynamic_Hash.Hashing
                         //change node to internal node + add sons
 
                         InternalNode newNode = new InternalNode();
+                        
                         newNode.Parent = node.Parent;
-                        if (node.Parent.RightNode == node) //is Right son
+
+                        //index from external node add to empty blocks management
+
+                        if (node.Index != -1)
                         {
-                            node.Parent.RightNode = newNode;
+                            this.AddToEmptyBlock(node.Index, block, true);
+                        }
+                        
+
+                        if (node != Trie.Root)
+                        {
+                            //i do make parents parent reference
+                            if (node.Parent.RightNode == node) //is Right son
+                            {
+                                node.Parent.RightNode = newNode;
+                            }
+                            else
+                            {
+                                node.Parent.LeftNode = newNode;
+                            }
                         }
                         else
                         {
-                            node.Parent.LeftNode = newNode;
+                            Trie.Root = newNode;
                         }
+                           
+                            ExternalNode LeftSon = new ExternalNode(-1, 0);
+                            ExternalNode RightSon = new ExternalNode(-1, 0);
 
-                        ExternalNode LeftSon = new ExternalNode(-1, 0);
-                        ExternalNode RightSon = new ExternalNode(-1, 0);
+                            newNode.LeftNode = LeftSon;
+                            newNode.RightNode = RightSon;
+                            LeftSon.Parent = newNode;
+                            RightSon.Parent = newNode;
+                        
 
-                        newNode.LeftNode = LeftSon;
-                        newNode.RightNode = RightSon;
-                        LeftSon.Parent = newNode;
-                        RightSon.Parent = newNode;
+                        
 
                         //allocate block for each of the sons
 
@@ -480,37 +500,6 @@ namespace Dynamic_Hash.Hashing
             return true;
         }
 
-        /* private void ChooseIndex(ExternalNode node, Block<T> block) 
-         {
-             if (EmptyBlocksIndex != -1)
-             {
-                 var index = EmptyBlocksIndex;
-                 var firstBlock = ReadBlockFromFile(EmptyBlocksIndex, true);
-
-                 if (firstBlock.ChainIndexAfter != -1)
-                 {
-                     var next = ReadBlockFromFile(firstBlock.ChainIndexAfter, true);
-                     next.ChainIndexBefore = -1;
-                     EmptyBlocksIndex = firstBlock.ChainIndexAfter;
-                     WriteBackToFile(firstBlock.ChainIndexAfter, next, true);
-                     node.Index = index;
-                 }
-                 else
-                 {
-                     //its first one in chaining
-                     node.Index = EmptyBlocksIndex;
-                     EmptyBlocksIndex = -1;
-                 }
-             }
-             else
-             {
-                 //nastavenie adresy na koniec suboru
-                 var newIndex = File.Length;
-                 File.SetLength(File.Length + block.getSize());
-                 node.Index = (int)newIndex;
-             }
-         }*/
-
         private void AddToOverflowBlock(Block<T> block, T data)
         {
             var indexes = new List<int>();
@@ -620,25 +609,39 @@ namespace Dynamic_Hash.Hashing
                     {
                         Trace.WriteLine("Error when shortening branches.");
                     }
-                    AddToEmptyBlock(brotherNode.Index, brotherBlock, true);
+                    
                     //add empty brotherBlock to empty blocks manager
                     node.CountOfRecords++;
+                    brotherNode.CountOfRecords--;
+                }
+                if (brotherNode.Index !=-1 && brotherNode.CountOfRecords == 0)
+                {
+                    AddToEmptyBlock(brotherNode.Index, brotherBlock, true);
+                    ShortenFileMain(brotherNode);
                 }
                 //cut parent and brotherNode
 
                 //TODO: check for root
-                var newParent = node.Parent.Parent;
-
-                if (node.Parent == newParent.RightNode)
+                if (node.Parent == Trie.Root)
                 {
-                    newParent.RightNode = node;
-                    node.Parent = newParent;
+                    //nesetujem parentovho parenta
                 }
                 else
                 {
-                    newParent.LeftNode = node;
-                    node.Parent = newParent;
+                    var newParent = node.Parent.Parent;
+
+                    if (node.Parent == newParent.RightNode)
+                    {
+                        newParent.RightNode = node;
+                        node.Parent = newParent;
+                    }
+                    else
+                    {
+                        newParent.LeftNode = node;
+                        node.Parent = newParent;
+                    }
                 }
+                
                 //nodes index stays the same
 
                 WriteBackToFile(node.Index, block, true);
@@ -661,95 +664,6 @@ namespace Dynamic_Hash.Hashing
                 }
             }
             return null;
-            /*   ExternalNode newNode = new ExternalNode(-1, 0);
-
-               var newBlock = new Block<T>(BlockFactor);
-
-               if (node.Index > -1)
-               {
-               var pom = block.ValidRecordsCount;
-                   for (int i = 0; i < pom; i++)
-                   {
-                       if (newBlock.Insert(block.Records[0])) //taking from front becouse non valid records are overwriten to the end
-                       {
-                           newNode.CountOfRecords++;
-                           block.Remove(block.Records[0]);
-                           node.CountOfRecords--;
-                       }
-                       else
-                       {
-                           Trace.WriteLine("Error when shortening the branch.");
-                       }
-
-                   }
-
-
-                   if (node.CountOfRecords == 0)
-                   {
-                       ShortenFile(node, block);
-                   }
-                   else
-                   {
-                       availableIndexes.Add(node.Index);
-                       node.Index = -1;
-                   }
-
-
-
-               }
-
-               if (brotherNode.Index > -1)
-               {
-                   var brotherBlock = ReadBlockFromFile(brotherNode.Index, true);
-                   var pom = brotherBlock.ValidRecordsCount;
-                   for (int i = 0; i < pom; i++)
-                   {
-                       if (newBlock.Insert(brotherBlock.Records[0]))
-                       {
-                           newNode.CountOfRecords++;
-                           brotherBlock.Remove(brotherBlock.Records[0]);
-                           brotherNode.CountOfRecords--;
-                       }
-                       else
-                       {
-                           Trace.WriteLine("Error when shortening the branch.");
-                       }
-
-
-                   }
-                   if (brotherNode.CountOfRecords == 0)
-                   {
-                       ShortenFile(brotherNode, brotherBlock);
-                   }
-                   else
-                   {
-                       availableIndexes.Add(brotherNode.Index);
-                       brotherNode.Index = -1;
-                   }
-               }
-
-               //TODO: sort
-               availableIndexes.Sort();
-               var newIndex = availableIndexes.ElementAt(0);
-               availableIndexes.RemoveAt(0);
-
-               var Parent = node.Parent;
-
-               newNode.Parent = Parent;
-               if (Parent.Parent.RightNode == Parent)
-               {
-                   Parent.Parent.RightNode = newNode;
-               }
-               else
-               {
-                   Parent.Parent.LeftNode = newNode;
-               }
-
-               newNode.Index = newIndex;
-
-               WriteBackToFile(newNode.Index, newBlock, true);
-
-               return newNode;*/
         }
 
         //manazment volnych blokov
@@ -946,8 +860,120 @@ namespace Dynamic_Hash.Hashing
 
         //stiasanie - iba ked sa mi realne uvolni jeden blok v preplnovacom subore
 
-        //striasam aj -1
         public bool RemoveNew(T data)
+        {
+            int level = -1;
+            var dataHash = data.getHash(CountHashFun);
+            var node = Trie.getExternalNode(dataHash, out level);
+
+            var block = ReadBlockFromFile(node.Index, true);
+            for (int i = 0; i < block.ValidRecordsCount; i++)
+            {
+                if (block.Records[i].MyEquals(data))
+                {
+                    if (!block.Remove(data))
+                    {
+                        Trace.WriteLine("Error - data cannot be removed.");
+                        return false;
+                    }
+
+                    node.CountOfRecords--;
+
+                    var brotherNode = Trie.findBrother(node);
+                    if (brotherNode!= null)
+                    {
+                        if (brotherNode.Index != -1)
+                        {
+                            //TODO:
+
+                            var brotherblock = ReadBlockFromFile(brotherNode.Index, true);
+                            if (brotherNode.CountOfRecords + node.CountOfRecords <= BlockFactor && brotherblock.OfindexNext == -1 && block.OfindexNext == -1)
+                            {
+                                //can merge upwards
+                                ShortenBranch(node, block, brotherNode, brotherblock);
+                                //TODO: controll if it was written to file
+
+                                return true;
+
+                            }
+                        }
+                    }
+                    //ak nie je brat alebo nemozu byt spojeni tak vymazala som + skratila som node
+                    if (node.CountOfRecords == 0 && block.OfindexNext == -1)
+                    {
+                        AddToEmptyBlock(node.Index, block, true);
+                        ShortenFileMain(node);
+                        node.Index = -1;
+                        //zapisuje sa block do file v tejto metode
+                        //skratim od konca
+                        //ShortenFile(node);
+                        return true;
+                    }
+                    //moze nastat situacia ze treba striasat
+                    Shake(node);
+                    //shortenFile(preplnujuci)
+                    //ShortenFile(false);
+                }
+            }
+            //nachadza sa v OF
+
+            if (block.OfindexNext != -1)
+            {
+                while (true)
+                {
+                    var pom = block.OfindexNext;
+                    block = ReadBlockFromFile(block.OfindexNext, false);
+                    for (int i = 0; i < block.ValidRecordsCount; i++)
+                    {
+                        if (block.Records[i].MyEquals(data))
+                        {
+                            if (!block.Remove(data))
+                            {
+                                Trace.WriteLine("Error - data cannot be removed.");
+                                return false;
+                            }
+                            else
+                            {
+                                if (block.ValidRecordsCount == 0)
+                                {
+                                    if (FileOverflow.Length - BlockSizeOF == pom)
+                                    {
+                                        FileOverflow.SetLength(File.Length - BlockSizeOF);
+
+                                        //TODO: skontrolovat aj ten pred
+                                    }
+                                    else
+                                    {
+                                        AddToEmptyBlock(pom, block, false);
+                                        return true;
+                                    }
+                                }
+                                Trace.WriteLine("Data removed from overflow file." + data.ToString());
+                            }
+                            //vymazem jeden zaznam - niekde by sa zisla kontrola ze ak vymazem BF count mozem striasat
+                            //kontrola, start with index from node
+                            Shake(node);
+
+
+                            WriteBackToFile(pom, block, false);
+                            return true;
+                        }
+                    }
+                    if (block.OfindexNext == -1)
+                    {
+                        //uz nieje dalsi block tak sa data nenasli
+                        return false;
+                    }
+                }
+            }
+            return false;
+            //Shake + shortenFile
+
+        }
+
+
+        //striasam aj -1
+        public bool RemoveNewI(T data)
         {
             int level = -1;
             var dataHash = data.getHash(CountHashFun);
@@ -965,6 +991,7 @@ namespace Dynamic_Hash.Hashing
                     }
                     else
                     {
+                        node.CountOfRecords--;
                         Trace.WriteLine("Data removed from main file." + data.ToString());
                     }
                     //skontrolovat pocet zaznamov v bloku - ak je prazdny a node.countOfRecords + brat.countofrecord < BlockFactor mozem mazat
@@ -978,7 +1005,7 @@ namespace Dynamic_Hash.Hashing
                         var brotherNode = Trie.findBrother(node);
                         if (brotherNode == null)
                         {
-                            node.CountOfRecords--;
+                            //node.CountOfRecords--;
                             if (block.ValidRecordsCount == 0)
                             {
                                 AddToEmptyBlock(node.Index, block, true);
@@ -994,7 +1021,7 @@ namespace Dynamic_Hash.Hashing
                             //TODO : can merge upwards - edit method
                             //for now will just set 
 
-                            node.CountOfRecords--;
+                            //node.CountOfRecords--;
 
                             WriteBackToFile(node.Index, block, true);
                             if (node.CountOfRecords == 0)
@@ -1008,8 +1035,13 @@ namespace Dynamic_Hash.Hashing
                         if (brotherBlock.OfindexNext != -1)
                         {
                             //has to end, cant join nodes who has records in overflowing file
-                            node.CountOfRecords--;
+                            //node.CountOfRecords--;
                             WriteBackToFile(node.Index, block, true);
+                            if (node.CountOfRecords == 0)
+                            {
+                                this.AddToEmptyBlock(node.Index, block, true);
+                            }
+
                             //deleted, nothing else to do
                             return true;
 
@@ -1063,8 +1095,16 @@ namespace Dynamic_Hash.Hashing
                             {
                                 if (block.ValidRecordsCount == 0)
                                 {
+                                    if (FileOverflow.Length - BlockSizeOF == pom)
+                                    {
+                                        FileOverflow.SetLength(File.Length - BlockSizeOF);
 
-                                    AddToEmptyBlock(pom, block, false);
+                                        //TODO: skontrolovat aj ten pred
+                                    }
+                                    else
+                                    {
+                                        AddToEmptyBlock(pom, block, false);
+                                    }
                                     return true;
 
                                 }
@@ -1162,9 +1202,18 @@ namespace Dynamic_Hash.Hashing
                         }
                         else
                         {
-                            AddToEmptyBlock(indexes[indexes.Count - 1], blocks[blocks.Count - 1], false);
-                            indexes.RemoveAt(indexes.Count - 1);
-                            blocks.RemoveAt(blocks.Count - 1);
+                            if (FileOverflow.Length-BlockSizeOF == indexes[indexes.Count-1])
+                            {
+                                FileOverflow.SetLength(File.Length - BlockSizeOF);
+
+                                //TODO: skontrolovat aj ten pred
+                            }
+                            else
+                            {
+                                AddToEmptyBlock(indexes[indexes.Count - 1], blocks[blocks.Count - 1], false);
+                                indexes.RemoveAt(indexes.Count - 1);
+                                blocks.RemoveAt(blocks.Count - 1);
+                            }
                         }
                     }
                     //to last block remove ofindexnext 
@@ -1220,24 +1269,167 @@ namespace Dynamic_Hash.Hashing
 
         }
 
-        private void ShortenFile(ExternalNode node, Block<T> block)
+        private void ShortenFileMain(ExternalNode node)
         {
-            var pom = File.Length;
-            if (node.Index == File.Length - block.getSize()) //if the node has the last address
-            {
-                pom -= block.getSize();
 
-                //TODO : add block to chaining
-                //remove from the end
-                File.SetLength(pom);
+            if (node.Index == (File.Length - BlockSize))
+            {
+                File.SetLength(File.Length - BlockSize);
+                node.Index = -1;
             }
             else
             {
-                //availableIndexes.Add(node.Index);
-                WriteBackToFile(node.Index, block, true);
+                return;
             }
-            node.Index = -1;
+            if (File.Length == 0)
+            {
+                return;
+            }
 
+
+            int previousindex = (int)(File.Length - BlockSize);
+
+            var block = ReadBlockFromFile(previousindex, true);
+            if (block.ValidRecordsCount == 0)
+            {
+                File.SetLength(File.Length - BlockSize);
+
+                //najst block previous index v zretazeni a odstranit ho
+
+                var pom = EmptyBlocksIndex;
+                while (true)
+                {
+                    var blockchain = ReadBlockFromFile(pom, true);
+                    if (pom == previousindex)
+                    {
+                        
+                        if (blockchain.ChainIndexBefore == -1) //start of chaining
+                        {
+                            EmptyBlocksIndex = blockchain.OfindexNext;
+                            var next = ReadBlockFromFile(blockchain.OfindexNext, true);
+                            next.OfIndexBefore = -1;
+
+                            WriteBackToFile(EmptyBlocksIndex, next,true);
+                            return;
+                        }
+                        else 
+                        {
+                            //before is number
+                            if (blockchain.OfindexNext == -1)
+                            {
+                                //zmenit iba predchodcu
+                                var before = ReadBlockFromFile(blockchain.OfIndexBefore, true);
+                                before.OfindexNext = -1;
+                                WriteBackToFile(blockchain.OfIndexBefore, before, true);
+                                return;
+                            }
+                            else
+                            {
+                                //before aj after
+
+                                var beforeBlock = ReadBlockFromFile(blockchain.OfIndexBefore, true);
+                                var afterBlock = ReadBlockFromFile(blockchain.OfindexNext, true);
+                                beforeBlock.OfindexNext = blockchain.OfindexNext;
+                                afterBlock.OfIndexBefore = blockchain.OfIndexBefore;
+
+                                WriteBackToFile(afterBlock.OfIndexBefore, beforeBlock, true);
+                                WriteBackToFile(beforeBlock.OfindexNext, afterBlock, true);
+                                return;
+
+                            }
+                        }
+                    }
+                    pom = blockchain.OfindexNext;
+
+                }
+                return;
+
+            }
+
+
+
+            /*if (previousindex == EmptyBlocksIndex)
+            {
+                var blockStart = ReadBlockFromFile(EmptyBlocksIndex, true);
+
+                if (blockStart.OfindexNext != -1)
+                {
+                    EmptyBlocksIndex = blockStart.OfindexNext;
+                }
+                else
+                {
+                    EmptyBlocksIndex = -1;
+                }
+
+                File.SetLength(File.Length - BlockSize);
+
+                if (File.Length == 0)
+                {
+                    return;
+                }
+
+            }
+
+            if (EmptyBlocksIndex == -1) 
+            {
+                return;
+            }
+
+            var block = ReadBlockFromFile(EmptyBlocksIndex, true);
+
+            while (true)
+            {
+                if (block.OfindexNext == -1)
+                {
+                    break;
+                }
+                if (block.OfindexNext != previousindex)
+                {
+                    block = ReadBlockFromFile(block.OfindexNext, true);
+                }
+                else
+                {
+                    //vymazem block zo zreatzenia + nastavim velkost file
+                    if (block.OfindexNext == -1 && block.OfIndexBefore != -1)
+                    {
+                        var beforeBlock = ReadBlockFromFile(block.OfIndexBefore, true);
+                        beforeBlock.OfindexNext = -1;
+                        WriteBackToFile(block.OfIndexBefore, beforeBlock,true);
+                        File.SetLength(File.Length - BlockSize);
+
+                        if (File.Length == 0 || EmptyBlocksIndex == -1)
+                        {
+                            return;
+                        }
+                        previousindex = (int)(File.Length-BlockSize);
+                        block = ReadBlockFromFile(EmptyBlocksIndex, true);
+                        continue;
+                    }
+                    else
+                    {
+                        var beforeBlock = ReadBlockFromFile(block.OfIndexBefore, true);
+                        var afterBlock = ReadBlockFromFile(block.OfindexNext, true);
+                        beforeBlock.OfindexNext = block.OfindexNext;
+                        afterBlock.OfIndexBefore = block.OfIndexBefore;
+
+                        WriteBackToFile(afterBlock.OfIndexBefore, beforeBlock, true);
+                        WriteBackToFile(beforeBlock.OfindexNext, afterBlock, true);
+
+                        File.SetLength(File.Length - BlockSize);
+
+                        if (File.Length == 0 || EmptyBlocksIndex == -1)
+                        {
+                            return;
+                        }
+                        previousindex = (int)(File.Length - BlockSize);
+                        block = ReadBlockFromFile(EmptyBlocksIndex, true);
+                        continue;
+
+                    }
+
+                }
+            }*/
+            
         }
 
         public Block<T> FindBlockByHash(BitArray hash)
@@ -1253,6 +1445,7 @@ namespace Dynamic_Hash.Hashing
             return null;
 
         }
+
         public Block<T> ReadBlockFromFile(int index, bool mainFile)
         {
             Block<T> block;
@@ -1311,6 +1504,7 @@ namespace Dynamic_Hash.Hashing
             T returnData;
 
             var level = -1;
+            var hashData = data.getHash(CountHashFun);
             var node = Trie.getExternalNode(data.getHash(CountHashFun), out level);
             if (node != null)
             {
@@ -1604,6 +1798,76 @@ namespace Dynamic_Hash.Hashing
             }
 
             return (null, -1, -1, -1);
+        }
+
+
+        public void SaveData(string pathTrie, string pathData, int newId) 
+        {
+            //hashcount
+            //BF in main FIle
+            //BF in OF file
+            //Adresy na empty blocks in each file
+            //trie a vsetky jeho externe nody + cesta k nim
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("BF:" + BlockFactor);
+            sb.AppendLine("BFO:" + BlockFactorOverflow);
+            sb.AppendLine("HASH:" + CountHashFun);
+            sb.AppendLine("EMF:" + EmptyBlocksIndex);
+            sb.AppendLine("EOF:" + EmptyBlocksIndexOverflow);
+            sb.AppendLine("NextId:" + newId);
+            System.IO.File.WriteAllText(pathData, sb.ToString());
+            Trie.SaveState(pathTrie);
+
+        }
+
+        public int LoadData(string triePath, string dataPath)
+        {
+            int returnId = -1;
+            this.Trie = new Trie.Trie();
+
+            // Read the data file
+            string[] lines = System.IO.File.ReadAllLines(dataPath);
+
+            foreach (string line in lines)
+            {
+                string[] parts = line.Split(':');
+                if (parts.Length == 2)
+                {
+                    string key = parts[0].Trim();
+                    string value = parts[1].Trim();
+
+                    switch (key)
+                    {
+                        case "BF":
+                            this.BlockFactor = int.Parse(value);
+                            break;
+                        case "BFO":
+                            this.BlockFactorOverflow = int.Parse(value);
+                            break;
+                        case "HASH":
+                            this.CountHashFun = int.Parse(value);
+                            break;
+                        case "EMF":
+                            this.EmptyBlocksIndex = int.Parse(value);
+                            break;
+                        case "EOF":
+                            this.EmptyBlocksIndexOverflow = int.Parse(value);
+                            break;
+                        case "NextId":
+                            returnId = int.Parse(value);
+                            break;
+                        // Add more cases as needed for additional keys
+                        default:
+                            // Handle unknown keys or ignore them
+                            break;
+                    }
+                }
+            }
+
+            // Load the trie state
+            Trie.ReadLeaves(triePath);
+            return returnId;
         }
 
     }

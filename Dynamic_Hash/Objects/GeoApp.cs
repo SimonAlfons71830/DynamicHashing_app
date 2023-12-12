@@ -21,7 +21,8 @@ namespace QuadTree.GeoSystem
         private Random _random = new Random();
         private DynamicHashing<Property> hashProperties;
         private DynamicHashing<PlotOfLand> hashLands;
-        public bool improvedWithReinsert = false;
+        public bool import = false;
+        public int newId;
 
         public GeoApp(MyQuadTree area) 
         {
@@ -31,7 +32,7 @@ namespace QuadTree.GeoSystem
             //seed
         }
 
-        public void AddProperty(int registerNumber, string description, ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates)
+        public void AddProperty(int registerNumber, string description, ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates, bool import)
         {
             var list = this.FindInterval(coordinates);
             var listForProp = list.OfType<PlotOfLand>().ToList();
@@ -83,10 +84,15 @@ namespace QuadTree.GeoSystem
             var prop = new Property(registerNumber, description, coordinates, listOfRegNumbersLands);
 
             this._area.Insert(prop);
-            this.hashProperties.Insert(prop);
+
+            if (!import)
+            {
+                this.hashProperties.Insert(prop);
+            }
         }
 
-        public void AddPlot(int registerNumber, string description, ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates) 
+
+        public void AddPlot(int registerNumber, string description, ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates, bool import) 
         {
             var list = this.FindInterval(coordinates);
             var listForProp = list.OfType<Property>().ToList();
@@ -139,7 +145,10 @@ namespace QuadTree.GeoSystem
             var plot = new PlotOfLand(registerNumber, description, coordinates, listOfRegNumbersProperties);
 
             this._area.Insert(plot);
-            this.hashLands.Insert(plot) ;
+            if (!import)
+            {
+                this.hashLands.Insert(plot);
+            }
         }
 
         public bool RemoveObj(Polygon obj) 
@@ -302,8 +311,7 @@ namespace QuadTree.GeoSystem
         }
 
 
-        //TODO : nepouziva sa 
-        public List<Polygon> FindOBJInterval(((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates, bool interfere, bool properties)
+        /*public List<Polygon> FindOBJInterval(((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates, bool interfere, bool properties)
         {
             var foundObjects = new List<ISpatialObject>();
 
@@ -319,7 +327,7 @@ namespace QuadTree.GeoSystem
                 var listOfPlots = foundObjects.OfType<PlotOfLand>().Cast<Polygon>().ToList();
                 return listOfPlots;
             }
-        }
+        }*/
 
         public List<string> LoadLandNames(string filePath)
         {
@@ -347,7 +355,11 @@ namespace QuadTree.GeoSystem
 
         public void seedApp(double startX, double startY, double endX, double endY, int numberOfProp, int numberOfPlot, int max_quad_cap, int max_depth) 
         {
+            //when seeding the app i want to remove everything, 
+            //from quad tree, from files, from hashing files,...
             _area.ResetTree(_area._root);
+            //reset hashing ???
+
             this.Reset();
 
             //10-1000 N -> (>0)
@@ -383,7 +395,7 @@ namespace QuadTree.GeoSystem
 
                 string desc = listofPropertyNames.ElementAt(_random.Next(listofPropertyNames.Count - 1));
                 //this.AddProperty(i, desc, (new Coordinates(startPosX, startPosY, 0), new Coordinates(startPosX, startPosY, 0)));
-                this.AddProperty(i, desc,((startPosX,startPosY),(endPosX,endPosY)));
+                this.AddProperty(i, desc,((startPosX,startPosY),(endPosX,endPosY)),false);
             }
 
             for (int i = 0; i < numberOfPlot; i++)
@@ -415,7 +427,7 @@ namespace QuadTree.GeoSystem
 
                 string desc = listofPlotNames.ElementAt(_random.Next(listofPlotNames.Count - 1));
 
-                this.AddPlot(numberOfProp + i, desc, ((startPosGen._x, startPosGen._y), (endPosGen._x, endPosGen._y)));
+                this.AddPlot(numberOfProp + i, desc, ((startPosGen._x, startPosGen._y), (endPosGen._x, endPosGen._y)),false);
             }
         }
 
@@ -452,7 +464,7 @@ namespace QuadTree.GeoSystem
                     }
 
 
-                    this.AddProperty(regN,desc,((Property)newObj).Coordinates);
+                    this.AddProperty(regN,desc,((Property)newObj).Coordinates,false);
                 }
                 //((Property)refObj).Coordinates = (new Coordinates(x0, y0, 0), new Coordinates(xk, yk, 0));
             }
@@ -486,7 +498,7 @@ namespace QuadTree.GeoSystem
 
                     }
 
-                    this.AddPlot(regN, desc, ((PlotOfLand)newObj).Coordinates);
+                    this.AddPlot(regN, desc, ((PlotOfLand)newObj).Coordinates, false);
                 }
                 //((PlotOfLand)refObj).Coordinates = (new Coordinates(x0, y0, 0), new Coordinates(xk, yk, 0));
             }
@@ -594,6 +606,21 @@ namespace QuadTree.GeoSystem
             return pomPlot;
         }
 
+        public void SaveData() 
+        {
+            hashProperties.SaveData("TrieProp.txt","DataProp.txt",newId);
+            hashLands.SaveData("TrieLands.txt", "DataLands.txt", newId);
+        }
+
+        public void LoadData() 
+        {
+            this.Reset();
+
+            this.newId = hashLands.LoadData("TrieLands.txt", "DataLands.txt");
+            hashProperties.LoadData("TrieProp.txt", "DataProp.txt");
+
+        }
+
         public void WriteToFiles()
         {
             StreamWriter writerProp = null;
@@ -616,20 +643,19 @@ namespace QuadTree.GeoSystem
                         //LatHem = (Latitude >= 0) ? 'N' : 'S';
 
                         writerProp.WriteLine(obj.GetType().Name + ";" + ((Property)obj)._registerNumber + ";" +
-                            ((Property)obj).Coordinates.Item1.LongitudeStart +
-                            ((Property)obj).Coordinates.Item1.LatitudeStart + 
-                            ((Property)obj).Coordinates.Item2.LongitudeEnd +
-                            ((Property)obj).Coordinates.Item2.LatitudeEnd + 
-
-                            ((Property)obj).Description) ;
+                            ((Property)obj).Coordinates.Item1.LongitudeStart + ";" +
+                            ((Property)obj).Coordinates.Item1.LatitudeStart + ";" +
+                            ((Property)obj).Coordinates.Item2.LongitudeEnd + ";" +
+                            ((Property)obj).Coordinates.Item2.LatitudeEnd + ";" +
+                            ((Property)obj).Description);
                     }
                     else
                     {
-                        writerPlots.WriteLine(obj.GetType().Name + ";" + ((PlotOfLand)obj)._registerNumber + ";" + 
-                            ((PlotOfLand)obj).Coordinates.Item1.LongitudeStart +  
-                            ((PlotOfLand)obj).Coordinates.Item1.LatitudeStart + 
-                            ((PlotOfLand)obj).Coordinates.Item2.LongitudeEnd + 
-                            ((PlotOfLand)obj).Coordinates.Item2.LatitudeEnd+ 
+                        writerPlots.WriteLine(obj.GetType().Name + ";" + ((PlotOfLand)obj).RegisterNumber + ";" +
+                            ((PlotOfLand)obj).Coordinates.Item1.LongitudeStart + ";" +
+                            ((PlotOfLand)obj).Coordinates.Item1.LatitudeStart + ";" +
+                            ((PlotOfLand)obj).Coordinates.Item2.LongitudeEnd + ";" +
+                            ((PlotOfLand)obj).Coordinates.Item2.LatitudeEnd + ";" +
                             ((PlotOfLand)obj).Description);
                     }
                 }
@@ -693,7 +719,7 @@ namespace QuadTree.GeoSystem
 
                             string description = parts[6];
 
-                            AddProperty(id, description,((coordX,coordY),(coordXE,coordYE)));
+                            AddProperty(id, description,((coordX,coordY),(coordXE,coordYE)),true);
                         }
                     }
                 }
@@ -747,7 +773,7 @@ namespace QuadTree.GeoSystem
 
                             string description = parts[6];
 
-                            AddPlot(id, description, ((coordStartX,coordStartY),(coordEndX,coordEndY)));
+                            AddPlot(id, description, ((coordStartX,coordStartY),(coordEndX,coordEndY)), true);
                         }
                     }
                 }
@@ -768,44 +794,6 @@ namespace QuadTree.GeoSystem
             this._area.SetNewDepth(newDepth);
         }
 
-
-        //TODO: PRESYPANIE VSETKYCH DAT DO NOVEJ STRUKTURY
-        //NASTAVENIE ROZSAHU + VLOZENIE PRVKOV
-        //ZORADENIE
-
-        public void WithdrawAndOrder(bool increaseSize) 
-        {
-            var objects = this._area.IntervalSearch(this._area._dimension, true);
-            var polygons = objects.OfType<Polygon>().ToList();
-
-            //sort according to size
-            polygons.Sort();
-
-            MyQuadTree newArea = null;
-            if (increaseSize)
-            {
-                //widen and lenghten to 10 percent of original size
-                double tenPercentX = (this._area._dimension.Xk - this._area._dimension.X0) * 0.1;
-                double tenPercentY = (this._area._dimension.Yk - this._area._dimension.Y0) * 0.1;
-
-                Boundaries newBoundaries = new Boundaries(this._area._dimension.X0 - (tenPercentX / 2), this._area._dimension.Y0 - (tenPercentY / 2),
-                    this._area._dimension.Xk + (tenPercentX / 2), this._area._dimension.Yk + (tenPercentY / 2));
-                newArea = new MyQuadTree(newBoundaries, this._area.maxDepth, this._area.MAX_QUAD_CAPACITY);
-            }
-            else
-            {
-                newArea = new MyQuadTree(this._area._dimension, this._area.maxDepth, this._area.MAX_QUAD_CAPACITY);
-            }
-            
-
-            foreach (var obj in polygons)
-            {
-                newArea.Insert(obj);
-            }
-
-        }
-
-
         public int getDepthOfStruct()
         {
             return this._area.maxDepth;
@@ -815,7 +803,6 @@ namespace QuadTree.GeoSystem
         public void Reset() 
         {
             this._area.ResetTree(this._area._root);
-            improvedWithReinsert = false;
         }
 
         public void setBFinMainFile(int blockFactor) 

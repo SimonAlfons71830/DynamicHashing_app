@@ -13,7 +13,8 @@ namespace Dynamic_Hash
         GeoApp geoApp;
         public MainForm( GeoApp geoApp)
         {
-            //dynTest = dynTestH;
+            
+            dynTest = new DynamicHashingTests();
             this.geoApp = geoApp;
             InitializeComponent();
         }
@@ -44,8 +45,7 @@ namespace Dynamic_Hash
 
         private void toStrintg_button_Click(object sender, EventArgs e)
         {
-            var form = new ToStringMain(geoApp, true);
-            this.Hide();
+            var form = new ToStringTests(dynTest);
             form.ShowDialog();
 
         }

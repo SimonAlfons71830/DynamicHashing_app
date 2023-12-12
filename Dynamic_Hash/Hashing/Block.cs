@@ -90,7 +90,6 @@ namespace Dynamic_Hash.Hashing
                     T temp = Records[i];
                     Records[i] = Records[ValidRecordsCount - 1];
                     Records[ValidRecordsCount - 1] = temp;
-                    //TODO: maybe rewrite the data for empty block (optional)
 
                     // Decrease the count of valid records
                     ValidRecordsCount--;

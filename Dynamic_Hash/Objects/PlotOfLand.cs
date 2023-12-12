@@ -17,6 +17,8 @@ namespace Dynamic_Hash.Objects
         private List<int> _properties;
         private string _description;
 
+        private int validCharsInDescription;
+
         private const int MAX_DESC_LENGTH = 11;
         private const int MAX_PROPERTIES_COUNT = 5;
 
@@ -49,11 +51,13 @@ namespace Dynamic_Hash.Objects
         {
             if (desc.Length <= MAX_DESC_LENGTH)
             {
+                validCharsInDescription = desc.Length;
                 //will add '*' to the length of 15
                 return desc.PadRight(MAX_DESC_LENGTH, '*');
             }
             else
             {
+                validCharsInDescription = MAX_DESC_LENGTH;
                 //will shorten the description
                 return desc.Substring(0, MAX_DESC_LENGTH);
             }
@@ -98,6 +102,8 @@ namespace Dynamic_Hash.Objects
             size += 4 * sizeof(double);
             //description (max length + 1 as null terminator)
             size += MAX_DESC_LENGTH + 1;
+            //validCharsInDesc
+            size += sizeof(int);
             //lands (count of records in list + size of each record -> int)
             size += sizeof(int) + MAX_PROPERTIES_COUNT * sizeof(int);
             //80B
@@ -113,8 +119,9 @@ namespace Dynamic_Hash.Objects
 
                 byte[] descriptionBytes = Encoding.Default.GetBytes(Description);
                 writer.Write((byte)descriptionBytes.Length);  // Store the length of the description
-                //TODO: length of description will be always same, store valid description chars so in description wont be '*'
+
                 writer.Write(descriptionBytes);
+                writer.Write(validCharsInDescription);
 
                 writer.Write(Coordinates.Item1.LongitudeStart);
                 writer.Write(Coordinates.Item1.LatitudeStart);
@@ -142,6 +149,10 @@ namespace Dynamic_Hash.Objects
                 byte descriptionLength = reader.ReadByte();
                 byte[] descriptionBytes = reader.ReadBytes(descriptionLength);
                 Description = Encoding.UTF8.GetString(descriptionBytes);
+
+                int validChars = reader.ReadInt32();
+
+                //Description = Description.Substring(0, validChars);
 
                 double startLongitude = reader.ReadDouble();
                 double startLatitude = reader.ReadDouble();

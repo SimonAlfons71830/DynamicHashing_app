@@ -12,9 +12,11 @@ namespace Dynamic_Hash.Objects
         private ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) _coordinates; //?? prerobit
         private List<int> _lands;
         private string _description;
+        private int validCharsInDesc;
 
         private const int MAX_DESC_LENGTH = 15;
         private const int MAX_LANDS_COUNT = 6;
+        
 
         /// <summary>
         /// Constructor with input parameters to create object
@@ -43,12 +45,14 @@ namespace Dynamic_Hash.Objects
         {
             if (desc.Length < MAX_DESC_LENGTH)
             {
+                validCharsInDesc = desc.Length;
                 //will add '*' to the length of 15
                 return desc.PadRight(MAX_DESC_LENGTH, '*');
             }
             else
             {
                 //will shorten the description
+                validCharsInDesc = MAX_DESC_LENGTH;
                 return desc.Substring(0, MAX_DESC_LENGTH);
             }
         }
@@ -157,6 +161,8 @@ namespace Dynamic_Hash.Objects
             size += 4 * sizeof(double);
             //description (max length + 1 as null terminator)
             size += MAX_DESC_LENGTH + 1;
+            //valid chars in string
+            size += sizeof(int);
             //lands (count of records in list + size of each record -> int)
             size += sizeof(int) + MAX_LANDS_COUNT * sizeof(int);
             //80B
@@ -172,8 +178,8 @@ namespace Dynamic_Hash.Objects
 
                 byte[] descriptionBytes = Encoding.Default.GetBytes(Description);
                 writer.Write((byte)descriptionBytes.Length);  // Store the length of the description
-                //TODO: length of description will be always same, store valid description chars so in description wont be '*'
                 writer.Write(descriptionBytes);
+                writer.Write(validCharsInDesc);
 
                 writer.Write(Coordinates.Item1.LongitudeStart);
                 writer.Write(Coordinates.Item1.LatitudeStart);
@@ -201,6 +207,10 @@ namespace Dynamic_Hash.Objects
                 byte descriptionLength = reader.ReadByte();
                 byte[] descriptionBytes = reader.ReadBytes(descriptionLength);
                 Description = Encoding.UTF8.GetString(descriptionBytes);
+                
+                int validcharsinDesc = reader.ReadInt32();
+
+                //Description = Description.Substring(0,validcharsinDesc);
 
                 double startLongitude = reader.ReadDouble();
                 double startLatitude = reader.ReadDouble();

@@ -292,7 +292,7 @@ namespace Dynamic_Hash.Tests
             dynHash.Trie = new Trie.Trie();
             //dynHash.AvailableIndexes.Clear();
             dynHash.File.Close();
-            /*try
+            try
             {
                 dynHash.File = new FileStream("hashing", FileMode.Create, FileAccess.ReadWrite);
             }
@@ -300,7 +300,7 @@ namespace Dynamic_Hash.Tests
             {
                 throw new InvalidOperationException("Error in Hashing: IO exception.", e);
             }
-*/
+
             failedObj = new List<Property>();
 
 

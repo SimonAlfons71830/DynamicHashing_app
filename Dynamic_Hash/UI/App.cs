@@ -19,7 +19,7 @@ namespace QuadTree.UI
         public int max_quad_cap;
         public int max_depth;
 
-        private int newId = 0;
+        //private int newId = 0;
 
         //for editing
         private int originalPROPRegisterNumber;
@@ -62,12 +62,25 @@ namespace QuadTree.UI
             //initial seeding u can change here
             max_quad_cap = 2;
             max_depth = 10;
-            int num_prop = 0;
-            int num_plot = 0;
+            int num_prop = 20;
+            int num_plot = 20;
 
-            _app.seedApp(0, 0, 450, 450, num_prop, num_plot, max_quad_cap, max_depth);
+            //_app.seedApp(0, 0, 450, 450, num_prop, num_plot, max_quad_cap, max_depth);
 
-            newId = num_prop + num_plot;
+            //_app.newId = num_prop + num_plot;
+
+            //LOADING FROM FILE
+            this._app.LoadData();
+
+
+            this._app.ReadProperties("Properties.txt");
+            MessageBox.Show("Import of Properties is completed.");
+
+
+            this._app.ReadPlots("Plots.txt");
+            MessageBox.Show("Import of Plots is completed.");
+
+            this.QuadPanel.Invalidate();
 
             this.HidePanels();
 
@@ -209,7 +222,7 @@ namespace QuadTree.UI
                                 "\nCoordinates:\n\t(" + plot.Coordinates.Item1.LongitudeStart + ", " + plot.Coordinates.Item1.LatitudeStart + ")\n\t("
                                 + plot.Coordinates.Item2.LongitudeEnd + ", " + plot.Coordinates.Item2.LatitudeEnd + ")\n";
                         }
-                        
+
                     }
 
                     objectDetails += "\n";
@@ -230,7 +243,7 @@ namespace QuadTree.UI
                 if (plot != null)
                 {
                     // Create a string to format the object's details.
-                    string objectDetails = $"PLOT\nID: {((PlotOfLand)plot)._registerNumber}\n" +
+                    string objectDetails = $"PLOT\nID: {((PlotOfLand)plot).RegisterNumber}\n" +
                                           $"Coordinates: ({((PlotOfLand)plot).Coordinates.Item1.LongitudeStart}, {((PlotOfLand)plot).Coordinates.Item1.LatitudeStart})\n" +
                                           $"                     ({((PlotOfLand)plot).Coordinates.Item2.LongitudeEnd}, {((PlotOfLand)plot).Coordinates.Item2.LatitudeEnd})\n" +
                                           $"Description: {((PlotOfLand)plot).Description}\n";
@@ -356,7 +369,7 @@ namespace QuadTree.UI
 
         private void addBTN_Click(object sender, EventArgs e)
         {
-            _app.AddProperty(newId++, description.Text, (((double)posLong.Value, (double)posLat.Value), ((double)posLongEnd.Value, (double)posLatEnd.Value)));
+            _app.AddProperty(_app.newId++, description.Text, (((double)posLong.Value, (double)posLat.Value), ((double)posLongEnd.Value, (double)posLatEnd.Value)), false);
             //this.redoGrids();
             this.QuadPanel.Invalidate(true);
 
@@ -372,7 +385,7 @@ namespace QuadTree.UI
         private void PlotAddBtn_Click(object sender, EventArgs e)
         {
 
-            _app.AddPlot(newId++, PlotDesc.Text, (((double)startPosPlotLong.Value, (double)startPosPlotLat.Value), ((double)endPosPlotLong.Value, (double)endPosPlotLat.Value)));
+            _app.AddPlot(_app.newId++, PlotDesc.Text, (((double)startPosPlotLong.Value, (double)startPosPlotLat.Value), ((double)endPosPlotLong.Value, (double)endPosPlotLat.Value)), false);
             //this.redoGrids();
             this.QuadPanel.Invalidate(true);
         }
@@ -431,7 +444,7 @@ namespace QuadTree.UI
 
             var boolpom = int.TryParse(registerNumberPlot_label.Text, out int rn);
 
-            bool attrChanged = 
+            bool attrChanged =
                 originalPLOTDescription != descEditPlot.Text;
 
             var changed = this._app.EditObject(originalPlot,
@@ -461,33 +474,33 @@ namespace QuadTree.UI
             panelPlot.Hide();
 
 
-/*
-            if (!keyAttrChanged && attrChanged)
-            {
-                originalPlot.Description = descEditPlot.Text;
-                originalPlot._registerNumber = rn;
-                selectedRowProp.Cells[0].Value = rn;
-                selectedRowProp.Cells[1].Value = descEditPlot.Text;
+            /*
+                        if (!keyAttrChanged && attrChanged)
+                        {
+                            originalPlot.Description = descEditPlot.Text;
+                            originalPlot._registerNumber = rn;
+                            selectedRowProp.Cells[0].Value = rn;
+                            selectedRowProp.Cells[1].Value = descEditPlot.Text;
 
-                dataGridEditDelete.Refresh();
-            }
-            else if (keyAttrChanged)
-            {
-                if (_app.RemoveObj(new PlotOfLand(originalPlot.RegisterNumber, originalPlot.Description, originalPlot.Coordinates, properties: null)))
-                {
-                    dataGridEditDelete.Rows.Remove(selectedRowProp);
-                    _app.AddPlot(rn, descEditPlot.Text, (((double)startPosEditPlotX.Value, (double)startPosEditPlotY.Value), ((double)endPosEditPlotX.Value, (double)endPosEditPlotY.Value)));
-                    DataRow newRow = dataWithRangeSearch.NewRow();
-                    newRow[0] = rn;
-                    newRow[1] = descEditPlot.Text;
-                    newRow[2] = "PlotOfLand";
-                    newRow[3] = ((double, double))(startPosEditPlotX.Value, startPosEditPlotY.Value);
-                    newRow[4] = ((double, double))(endPosEditPlotX.Value, endPosEditPlotY.Value);
+                            dataGridEditDelete.Refresh();
+                        }
+                        else if (keyAttrChanged)
+                        {
+                            if (_app.RemoveObj(new PlotOfLand(originalPlot.RegisterNumber, originalPlot.Description, originalPlot.Coordinates, properties: null)))
+                            {
+                                dataGridEditDelete.Rows.Remove(selectedRowProp);
+                                _app.AddPlot(rn, descEditPlot.Text, (((double)startPosEditPlotX.Value, (double)startPosEditPlotY.Value), ((double)endPosEditPlotX.Value, (double)endPosEditPlotY.Value)));
+                                DataRow newRow = dataWithRangeSearch.NewRow();
+                                newRow[0] = rn;
+                                newRow[1] = descEditPlot.Text;
+                                newRow[2] = "PlotOfLand";
+                                newRow[3] = ((double, double))(startPosEditPlotX.Value, startPosEditPlotY.Value);
+                                newRow[4] = ((double, double))(endPosEditPlotX.Value, endPosEditPlotY.Value);
 
-                    dataWithRangeSearch.Rows.Add(newRow);
-                    dataGridEditDelete.Refresh();
-                }
-            }*/
+                                dataWithRangeSearch.Rows.Add(newRow);
+                                dataGridEditDelete.Refresh();
+                            }
+                        }*/
 
             panelPlot.Hide();
         }
@@ -510,7 +523,7 @@ namespace QuadTree.UI
 
             var boolpom = int.TryParse(registerNumberProp_label.Text, out int rn);
 
-            bool attrChanged =  originalPROPDescription != descBoxEditProp.Text;
+            bool attrChanged = originalPROPDescription != descBoxEditProp.Text;
 
             var changed = this._app.EditObject(originalProp,
                new Property(rn, descBoxEditProp.Text,
@@ -552,6 +565,7 @@ namespace QuadTree.UI
         private void exportBtn_Click(object sender, EventArgs e)
         {
             panelSeedApp.Hide();
+            this._app.SaveData();
             this._app.WriteToFiles();
             MessageBox.Show("Export Finished.");
         }
@@ -561,33 +575,15 @@ namespace QuadTree.UI
         {
             panelSeedApp.Hide();
 
-            MessageBox.Show("Choose a Properties.txt");
-            String filepath = String.Empty;
-            String fileExt = string.Empty;
+            this._app.LoadData();
 
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            if (openFileDialog.ShowDialog() == DialogResult.OK)
-            {
 
-                filepath = openFileDialog.FileName;
-                fileExt = Path.GetExtension(filepath);
+            this._app.ReadProperties("Properties.txt");
+            MessageBox.Show("Import of Properties is completed.");
 
-                this._app.ReadProperties(filepath);
-                MessageBox.Show("Import of Properties is completed.");
 
-            }
-            MessageBox.Show("Choose a Plots.txt");
-            String filepathPoi = String.Empty;
-            String fileExtPoi = string.Empty;
-            OpenFileDialog openFileD = new OpenFileDialog();
-            if (openFileD.ShowDialog() == DialogResult.OK)
-            {
-                filepathPoi = openFileD.FileName;
-                fileExt = Path.GetExtension(filepathPoi);
-
-                this._app.ReadPlots(filepathPoi);
-                MessageBox.Show("Import of Plots is completed.");
-            }
+            this._app.ReadPlots("Plots.txt");
+            MessageBox.Show("Import of Plots is completed.");
 
             this.QuadPanel.Invalidate();
         }
@@ -730,7 +726,7 @@ namespace QuadTree.UI
                             //remove from grid
                             dataGridEditDelete.Rows.Remove(selectedRow);
 
-                            
+
                         }
                     }
 
