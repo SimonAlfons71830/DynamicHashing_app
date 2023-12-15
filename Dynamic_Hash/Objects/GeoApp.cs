@@ -405,15 +405,15 @@ namespace QuadTree.GeoSystem
 
                 if ((this._area._dimension.Xk - this._area._dimension.X0) > (this._area._dimension.Yk - this._area._dimension.Y0))
                 {
-                    rozmer = _random.NextDouble() * ((this._area._dimension.Yk - this._area._dimension.Y0) / 5.0);
+                    rozmer = _random.NextDouble() * ((this._area._dimension.Yk - this._area._dimension.Y0) / 3.0);
                 }
                 else
                 {
-                    rozmer = _random.NextDouble() * ((this._area._dimension.Xk - this._area._dimension.X0) / 5.0);
+                    rozmer = _random.NextDouble() * ((this._area._dimension.Xk - this._area._dimension.X0) / 3.0);
                 }
 
                 //pri generovani plotOfLand -> zadavam rozmer a suradnice sa prepocitaju
-                rozmer = 10;
+                rozmer = 25;
 
                 var startPosGen = new MyPoint(
                     _random.NextDouble() * (this._area._dimension.Xk - rozmer) + this._area._dimension.X0,
@@ -606,18 +606,18 @@ namespace QuadTree.GeoSystem
             return pomPlot;
         }
 
-        public void SaveData() 
+        public void SaveData(string path) 
         {
-            hashProperties.SaveData("TrieProp.txt","DataProp.txt",newId);
-            hashLands.SaveData("TrieLands.txt", "DataLands.txt", newId);
+            hashProperties.SaveData("TrieProp.txt","DataProp.txt",newId, path);
+            hashLands.SaveData("TrieLands.txt", "DataLands.txt", newId, path);
         }
 
-        public void LoadData() 
+        public void LoadData(string landsTrieFile, string dataLandsFile, string propTrieFile, string dataPropFile) 
         {
             this.Reset();
 
-            this.newId = hashLands.LoadData("TrieLands.txt", "DataLands.txt");
-            hashProperties.LoadData("TrieProp.txt", "DataProp.txt");
+            this.newId = hashLands.LoadData(landsTrieFile, dataLandsFile);
+            hashProperties.LoadData(propTrieFile, dataPropFile);
 
         }
 
@@ -803,8 +803,16 @@ namespace QuadTree.GeoSystem
         public void Reset() 
         {
             this._area.ResetTree(this._area._root);
+            //this.hashLands = new DynamicHashing<PlotOfLand>();
+            
         }
 
+        public void DataInsert(string fileNameLands, string OFfileNameLands, string fileNameProp, string OffileNameProp, int BF, int bfOf, int countHashFun) 
+        {
+            this.hashLands = new DynamicHashing<PlotOfLand>(fileNameLands,OFfileNameLands,BF,bfOf,countHashFun);
+            this.hashProperties = new DynamicHashing<Property>(fileNameProp, OffileNameProp, BF, bfOf, countHashFun);
+        
+        }
         public void setBFinMainFile(int blockFactor) 
         {
             hashLands.BlockFactor = blockFactor;

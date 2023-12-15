@@ -205,6 +205,14 @@ namespace Dynamic_Hash.Trie
 
             Node currentNode = _root;
 
+            if (bitset.Count == 0)
+            {
+                //data are in root
+                ((ExternalNode)_root).Index = nodeIndex;
+                ((ExternalNode)_root).CountOfRecords = countOfRecords;
+            }
+    
+
             for (int i = 0; i < bitset.Length; i++)
             {
                 if (bitset[i])
@@ -314,7 +322,7 @@ namespace Dynamic_Hash.Trie
         }
 
 
-        public void SaveState(string filePath)
+        public void SaveState(string path, string filePath)
         {
             StringBuilder sb = new StringBuilder();
             var list = this.getLeaves();

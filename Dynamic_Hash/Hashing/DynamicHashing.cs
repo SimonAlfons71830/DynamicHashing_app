@@ -48,7 +48,7 @@ namespace Dynamic_Hash.Hashing
             //create main file
             try
             {
-                File = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite);
+                File = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
             }
             catch (Exception e)
             {
@@ -57,7 +57,7 @@ namespace Dynamic_Hash.Hashing
             //create overflow File
             try
             {
-                FileOverflow = new FileStream(OFfilename, FileMode.Create, FileAccess.ReadWrite);
+                FileOverflow = new FileStream(OFfilename, FileMode.OpenOrCreate, FileAccess.ReadWrite);
             }
             catch (Exception e)
             {
@@ -66,6 +66,7 @@ namespace Dynamic_Hash.Hashing
 
             noOfRecords = 0;
         }
+
 
         public int BlockFactor { get => _blockFactor; set => _blockFactor = value; }
         public FileStream File { get => _file; set => _file = value; }
@@ -1801,7 +1802,7 @@ namespace Dynamic_Hash.Hashing
         }
 
 
-        public void SaveData(string pathTrie, string pathData, int newId) 
+        public void SaveData(string pathTrie, string pathData, int newId, string path) 
         {
             //hashcount
             //BF in main FIle
@@ -1817,7 +1818,7 @@ namespace Dynamic_Hash.Hashing
             sb.AppendLine("EOF:" + EmptyBlocksIndexOverflow);
             sb.AppendLine("NextId:" + newId);
             System.IO.File.WriteAllText(pathData, sb.ToString());
-            Trie.SaveState(pathTrie);
+            Trie.SaveState(path,pathTrie);
 
         }
 

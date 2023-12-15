@@ -6,6 +6,8 @@ using QuadTree.GeoSystem;
 using QuadTree.QTree;
 using QuadTree.Structures;
 using System.Data;
+using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace QuadTree.UI
 {
@@ -70,15 +72,15 @@ namespace QuadTree.UI
             //_app.newId = num_prop + num_plot;
 
             //LOADING FROM FILE
-            this._app.LoadData();
+            //this._app.LoadData();
 
 
-            this._app.ReadProperties("Properties.txt");
-            MessageBox.Show("Import of Properties is completed.");
+            //this._app.ReadProperties("Properties.txt");
+            //MessageBox.Show("Import of Properties is completed.");
 
 
-            this._app.ReadPlots("Plots.txt");
-            MessageBox.Show("Import of Plots is completed.");
+            //this._app.ReadPlots("Plots.txt");
+            //MessageBox.Show("Import of Plots is completed.");
 
             this.QuadPanel.Invalidate();
 
@@ -564,9 +566,30 @@ namespace QuadTree.UI
         //NEW EXPORT MENU BUTTON
         private void exportBtn_Click(object sender, EventArgs e)
         {
+            // Use FolderBrowserDialog to select a directory
+            using (var folderBrowserDialog = new FolderBrowserDialog())
+            {
+                folderBrowserDialog.Description = "Select a directory";
+
+                // Show the dialog and check if the user clicked OK
+                if (folderBrowserDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Get the selected directory path
+                    string selectedDirectory = folderBrowserDialog.SelectedPath;
+
+                    // Use the selectedDirectory as needed
+                    Trace.WriteLine($"Selected directory: {selectedDirectory}");
+                }
+                else
+                {
+                    Trace.WriteLine("Operation canceled");
+                }
+            }
+
+
             panelSeedApp.Hide();
-            this._app.SaveData();
-            this._app.WriteToFiles();
+            this._app.SaveData(string path);
+            this._app.WriteToFiles(string path);
             MessageBox.Show("Export Finished.");
         }
 
@@ -574,16 +597,54 @@ namespace QuadTree.UI
         private void importBtn_Click(object sender, EventArgs e)
         {
             panelSeedApp.Hide();
+            // Specify the absolute directory path
+            //string directoryPath = @"C:\Users\Simona\Desktop\skola\Ing_studium\III\AUS2\SEM2\Dynamic_Hash\appData";
+            string directoryPath = @"appData";
 
-            this._app.LoadData();
+            this._app.Reset();
+            
+
+            // Get the full path to the project directory
+            string projectDirectory = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory);
+
+            // Get the relative path
+            string relativePath = Path.GetRelativePath(projectDirectory, directoryPath);
+
+            // Check if the directory exists before attempting to list and read files
+            if (Directory.Exists(directoryPath))
+            {
+                // Get all files in the directory
+                string[] files = Directory.GetFiles(directoryPath);
+
+                if (files.Count() == 10)
+                {
+                    //[DataLands.txt] [DataProp.txt] [Lands] [OFLands] [OFProperties] [Plots.txt] [Properties] [Properties.txt] [TrieLands.txt] [TrieProp.txt] 
+
+                    this._app.DataInsert(files[2], files[3], files[6], files[4], 3, 5, 3);
+
+                    this._app.LoadData(files[8], files[0], files[9], files[1]);
+
+                    this._app.ReadProperties(files[7]);
+                    MessageBox.Show("Import of Properties is completed.");
+
+                    this._app.ReadPlots(files[5]);
+                    MessageBox.Show("Import of Plots is completed.");
+                }
+                else
+                {
+                    Trace.WriteLine($"Directory not found: {directoryPath}");
+                }
+            }
+            else
+            {
+                Trace.WriteLine($"Directory not found: {directoryPath}");
+            }
+            
+
+            //this._app.LoadData();
 
 
-            this._app.ReadProperties("Properties.txt");
-            MessageBox.Show("Import of Properties is completed.");
-
-
-            this._app.ReadPlots("Plots.txt");
-            MessageBox.Show("Import of Plots is completed.");
+            
 
             this.QuadPanel.Invalidate();
         }
