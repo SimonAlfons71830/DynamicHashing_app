@@ -62,6 +62,8 @@ namespace QuadTree.UI
         private void App_Load(object sender, EventArgs e)
         {
             //initial seeding u can change here
+
+
             max_quad_cap = 2;
             max_depth = 10;
             int num_prop = 20;
@@ -579,6 +581,11 @@ namespace QuadTree.UI
 
                     // Use the selectedDirectory as needed
                     Trace.WriteLine($"Selected directory: {selectedDirectory}");
+                    panelSeedApp.Hide();
+                    this._app.SaveData(selectedDirectory);
+                    this._app.WriteToFiles(selectedDirectory);
+                    MessageBox.Show("Export Finished. Closing the app.");
+                    this.Close();
                 }
                 else
                 {
@@ -586,65 +593,64 @@ namespace QuadTree.UI
                 }
             }
 
-
-            panelSeedApp.Hide();
-            this._app.SaveData(string path);
-            this._app.WriteToFiles(string path);
-            MessageBox.Show("Export Finished.");
         }
 
-        //NEW IMPORT MENU BUTTON
         private void importBtn_Click(object sender, EventArgs e)
         {
             panelSeedApp.Hide();
-            // Specify the absolute directory path
-            //string directoryPath = @"C:\Users\Simona\Desktop\skola\Ing_studium\III\AUS2\SEM2\Dynamic_Hash\appData";
-            string directoryPath = @"appData";
 
-            this._app.Reset();
-            
-
-            // Get the full path to the project directory
-            string projectDirectory = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory);
-
-            // Get the relative path
-            string relativePath = Path.GetRelativePath(projectDirectory, directoryPath);
-
-            // Check if the directory exists before attempting to list and read files
-            if (Directory.Exists(directoryPath))
+            using (var folderBrowserDialog = new FolderBrowserDialog())
             {
-                // Get all files in the directory
-                string[] files = Directory.GetFiles(directoryPath);
+                folderBrowserDialog.Description = "Select the directory for importing files";
 
-                if (files.Count() == 10)
+                // Show the dialog and check if the user clicked OK
+                if (folderBrowserDialog.ShowDialog() == DialogResult.OK)
                 {
-                    //[DataLands.txt] [DataProp.txt] [Lands] [OFLands] [OFProperties] [Plots.txt] [Properties] [Properties.txt] [TrieLands.txt] [TrieProp.txt] 
+                    string directoryPath = folderBrowserDialog.SelectedPath;
 
-                    this._app.DataInsert(files[2], files[3], files[6], files[4], 3, 5, 3);
+                    this._app.Reset();
 
-                    this._app.LoadData(files[8], files[0], files[9], files[1]);
+                    // Get the full path to the project directory
+                    string projectDirectory = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory);
 
-                    this._app.ReadProperties(files[7]);
-                    MessageBox.Show("Import of Properties is completed.");
+                    // Get the relative path
+                    string relativePath = Path.GetRelativePath(projectDirectory, directoryPath);
 
-                    this._app.ReadPlots(files[5]);
-                    MessageBox.Show("Import of Plots is completed.");
+                    // Check if the directory exists before attempting to list and read files
+                    if (Directory.Exists(directoryPath))
+                    {
+                        // Get all files in the directory
+                        string[] files = Directory.GetFiles(directoryPath);
+
+                        if (files.Length == 10)
+                        {
+                            // [DataLands.txt] [DataProp.txt] [Lands] [OFLands] [OFProperties] [Plots.txt] [Properties] [Properties.txt] [TrieLands.txt] [TrieProp.txt]
+
+                            this._app.DataInsert(files[2], files[3], files[6], files[4], 3, 5, 3);
+
+                            this._app.LoadData(files[8], files[0], files[9], files[1]);
+
+                            this._app.ReadProperties(files[7]);
+                            MessageBox.Show("Import of Properties is completed.");
+
+                            this._app.ReadPlots(files[5]);
+                            MessageBox.Show("Import of Plots is completed.");
+                        }
+                        else
+                        {
+                            Trace.WriteLine($"Directory does not contain the expected number of files: {directoryPath}");
+                        }
+                    }
+                    else
+                    {
+                        Trace.WriteLine($"Directory not found: {directoryPath}");
+                    }
                 }
                 else
                 {
-                    Trace.WriteLine($"Directory not found: {directoryPath}");
+                    Trace.WriteLine("Import canceled");
                 }
             }
-            else
-            {
-                Trace.WriteLine($"Directory not found: {directoryPath}");
-            }
-            
-
-            //this._app.LoadData();
-
-
-            
 
             this.QuadPanel.Invalidate();
         }

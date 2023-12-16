@@ -151,6 +151,11 @@ namespace QuadTree.GeoSystem
             }
         }
 
+        public void ClearContent()
+        {
+            
+        }
+
         public bool RemoveObj(Polygon obj) 
         {
 
@@ -396,6 +401,7 @@ namespace QuadTree.GeoSystem
                 string desc = listofPropertyNames.ElementAt(_random.Next(listofPropertyNames.Count - 1));
                 //this.AddProperty(i, desc, (new Coordinates(startPosX, startPosY, 0), new Coordinates(startPosX, startPosY, 0)));
                 this.AddProperty(i, desc,((startPosX,startPosY),(endPosX,endPosY)),false);
+                this.newId++;
             }
 
             for (int i = 0; i < numberOfPlot; i++)
@@ -428,6 +434,7 @@ namespace QuadTree.GeoSystem
                 string desc = listofPlotNames.ElementAt(_random.Next(listofPlotNames.Count - 1));
 
                 this.AddPlot(numberOfProp + i, desc, ((startPosGen._x, startPosGen._y), (endPosGen._x, endPosGen._y)),false);
+                this.newId++;
             }
         }
 
@@ -610,6 +617,7 @@ namespace QuadTree.GeoSystem
         {
             hashProperties.SaveData("TrieProp.txt","DataProp.txt",newId, path);
             hashLands.SaveData("TrieLands.txt", "DataLands.txt", newId, path);
+
         }
 
         public void LoadData(string landsTrieFile, string dataLandsFile, string propTrieFile, string dataPropFile) 
@@ -621,14 +629,14 @@ namespace QuadTree.GeoSystem
 
         }
 
-        public void WriteToFiles()
+        public void WriteToFiles(string pathDirectory)
         {
             StreamWriter writerProp = null;
             StreamWriter writerPlots = null;
             try
             {
-                writerProp = new StreamWriter("Properties.txt");
-                writerPlots = new StreamWriter("Plots.txt");
+                writerProp = new StreamWriter(pathDirectory + "\\Properties.txt");
+                writerPlots = new StreamWriter(pathDirectory + "\\Plots.txt");
 
 
                 //var AllObj = this.FindInterval((new Coordinates(this._area._dimension.X0, this._area._dimension.Y0, 0), new Coordinates(this._area._dimension.Xk, this._area._dimension.Yk, 0)));

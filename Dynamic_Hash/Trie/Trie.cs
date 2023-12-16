@@ -346,7 +346,7 @@ namespace Dynamic_Hash.Trie
 
                 sb.Append(bitset + ";" + leaf.node.Index + ";" + leaf.node.CountOfRecords + "\n");
             }
-            File.WriteAllText(filePath, sb.ToString());
+            File.WriteAllText(path + "\\" + filePath, sb.ToString());
         }
     }
 }
