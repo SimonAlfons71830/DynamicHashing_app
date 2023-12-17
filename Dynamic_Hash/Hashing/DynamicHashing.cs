@@ -711,11 +711,8 @@ namespace Dynamic_Hash.Hashing
                     //start of the chaining
                     block.ChainIndexBefore = -1;
 
-                    //TODO: block has chaining with other blocks in OF - change this
-
                     if (block.OfindexNext == -1) //no next blocks in OF
                     {
-                        //zmensenie stromu
                         //block is empty add to empty blocks in main file
 
                         EmptyBlocksIndex = indexFromNode;
@@ -726,7 +723,6 @@ namespace Dynamic_Hash.Hashing
                     }
                     else
                     {
-                        //TODO : shrink/striasanie do main file z OF
                         return;
                     }
 
@@ -761,15 +757,16 @@ namespace Dynamic_Hash.Hashing
                 WriteBackToFile(indexFromNode, block, true);
                 WriteBackToFile(block.ChainIndexBefore, pomBlock, true);
                 return;
-            }
+            }/*
             else
             {
+                //zreazernie volnych blokov v OF
                 var indexes = new List<int>();
                 indexes.Add(EmptyBlocksIndexOverflow);
                 //ak nie je ziadny block este prazdny pridam ho na zaciatok
                 if (EmptyBlocksIndexOverflow == -1)
                 {
-                    if (block.OfindexNext == -1) //no next blocks 
+                                       if (block.OfindexNext == -1) //no next blocks 
                     {
                         //check before
                         if (block.OfIndexBefore != -1) //if its starting block of the OF == -1 we do not have to do anything
@@ -884,167 +881,167 @@ namespace Dynamic_Hash.Hashing
                 return;
             }
         }
+*/
+            /* //stiasanie - iba ked sa mi realne uvolni jeden blok v preplnovacom subore
 
-       /* //stiasanie - iba ked sa mi realne uvolni jeden blok v preplnovacom subore
+             public bool RemoveNewI(T data)
+             {
+                 int level = -1;
+                 var dataHash = data.getHash(CountHashFun);
+                 var node = Trie.getExternalNode(dataHash, out level);
 
-        public bool RemoveNewI(T data)
-        {
-            int level = -1;
-            var dataHash = data.getHash(CountHashFun);
-            var node = Trie.getExternalNode(dataHash, out level);
+                 var block = ReadBlockFromFile(node.Index, true);
+                 for (int i = 0; i < block.ValidRecordsCount; i++)
+                 {
+                     if (block.Records[i].MyEquals(data))
+                     {
+                         if (!block.Remove(data))
+                         {
+                             Trace.WriteLine("Error - data cannot be removed.");
+                             return false;
+                         }
 
-            var block = ReadBlockFromFile(node.Index, true);
-            for (int i = 0; i < block.ValidRecordsCount; i++)
-            {
-                if (block.Records[i].MyEquals(data))
-                {
-                    if (!block.Remove(data))
-                    {
-                        Trace.WriteLine("Error - data cannot be removed.");
-                        return false;
-                    }
+                         node.CountOfRecords--;
 
-                    node.CountOfRecords--;
+                         var brotherNode = Trie.findBrother(node);
+                         if (brotherNode!= null)
+                         {
+                             if (brotherNode.Index != -1)
+                             {
+                                 //TODO:
 
-                    var brotherNode = Trie.findBrother(node);
-                    if (brotherNode!= null)
-                    {
-                        if (brotherNode.Index != -1)
-                        {
-                            //TODO:
+                                 var brotherblock = ReadBlockFromFile(brotherNode.Index, true);
+                                 if (brotherNode.CountOfRecords + node.CountOfRecords <= BlockFactor && brotherblock.OfindexNext == -1 && block.OfindexNext == -1)
+                                 {
+                                     //can merge upwards
+                                     ShortenBranch(node, block, brotherNode, brotherblock);
+                                     //TODO: controll if it was written to file
 
-                            var brotherblock = ReadBlockFromFile(brotherNode.Index, true);
-                            if (brotherNode.CountOfRecords + node.CountOfRecords <= BlockFactor && brotherblock.OfindexNext == -1 && block.OfindexNext == -1)
-                            {
-                                //can merge upwards
-                                ShortenBranch(node, block, brotherNode, brotherblock);
-                                //TODO: controll if it was written to file
+                                     return true;
 
-                                return true;
-
-                            }
-                            //if one of the brothers is empty and other has data + data in OF file, i can merge
-                            if (brotherblock.OfindexNext != -1 && node.CountOfRecords == 0 && block.OfindexNext == -1 ||
-                                block.OfindexNext != -1 &&  brotherNode.CountOfRecords == 0 && brotherblock.OfindexNext == -1)
-                            {
-                                if (node.CountOfRecords == 0)
-                                {
-                                    //brotherblock is main
-                                    ShortenBranch(brotherNode, brotherblock, node, block);
-                                    return true;
-                                }
-                                else
-                                {
-                                    ShortenBranch(node, block,brotherNode, brotherblock);
-                                    return true;
-                                }
-
-
-
-                            }
-                            //cant join brothers -> write back to file
-                            if (block.ValidRecordsCount == 0) //cant be merged with brother (due to brothers having records in OF file)
-                            {
-                                AddToEmptyBlock(node.Index, block, true); ///block will write itself back to file in here
-                                node.Index = -1;
-                                return true;
-                            }
-                            else // cant be mergerged with brother (due to more records than BF)
-                            {
-                                WriteBackToFile(node.Index, block, true);
-                                return true;
-                            }
-
-                        }
-                        else
-                        {
-                            //can merge upwards
-                            var fakeBlock = new Block<T>(BlockFactor);
-                            ShortenBranch(node, block, brotherNode, fakeBlock);
-                            return true;
-                        }
-                    }
-                    //ak nie je brat alebo nemozu byt spojeni tak vymazala som + skratila som node
-                    if (node.CountOfRecords == 0 && block.OfindexNext == -1)
-                    {
-                        AddToEmptyBlock(node.Index, block, true);
-                        //ShortenFileMain(node);
-                        node.Index = -1;
-                        //zapisuje sa block do file v tejto metode
-                        //skratim od konca
-                        //ShortenFile(node);
-                        return true;
-                    }
-                    else //not merged with brother but still some records left
-                    {
-                        WriteBackToFile(node.Index, block, true);
-                        //Shake(node);
-                        return true;
-                    }
-                    //moze nastat situacia ze treba striasat
-                    Shake(node);
-                    //shortenFile(preplnujuci)
-                    //ShortenFile(false);
-                }
-            }
-            //nachadza sa v OF
-
-            if (block.OfindexNext != -1)
-            {
-                while (true)
-                {
-                    var pom = block.OfindexNext;
-                    block = ReadBlockFromFile(block.OfindexNext, false);
-                    for (int i = 0; i < block.ValidRecordsCount; i++)
-                    {
-                        if (block.Records[i].MyEquals(data))
-                        {
-                            if (!block.Remove(data))
-                            {
-                                Trace.WriteLine("Error - data cannot be removed.");
-                                return false;
-                            }
-                            else
-                            {
-                                node.CountOfRecords--;
-                                if (block.ValidRecordsCount == 0)
-                                {
-                                    if (FileOverflow.Length - BlockSizeOF == pom)
-                                    {
-                                        FileOverflow.SetLength(File.Length - BlockSizeOF);
-
-                                        //TODO: skontrolovat aj ten pred
-                                    }
-                                    else
-                                    {
-                                        AddToEmptyBlock(pom, block, false);
-                                        return true;
-                                    }
-                                }
-                                Trace.WriteLine("Data removed from overflow file." + data.ToString());
-                                WriteBackToFile(pom, block, false);
-                            }
-                            
-                            //kontrola, start with index from node
-                            //Shake(node);
+                                 }
+                                 //if one of the brothers is empty and other has data + data in OF file, i can merge
+                                 if (brotherblock.OfindexNext != -1 && node.CountOfRecords == 0 && block.OfindexNext == -1 ||
+                                     block.OfindexNext != -1 &&  brotherNode.CountOfRecords == 0 && brotherblock.OfindexNext == -1)
+                                 {
+                                     if (node.CountOfRecords == 0)
+                                     {
+                                         //brotherblock is main
+                                         ShortenBranch(brotherNode, brotherblock, node, block);
+                                         return true;
+                                     }
+                                     else
+                                     {
+                                         ShortenBranch(node, block,brotherNode, brotherblock);
+                                         return true;
+                                     }
 
 
-                            //WriteBackToFile(pom, block, false);
-                            return true;
-                        }
-                    }
-                    if (block.OfindexNext == -1)
-                    {
-                        //uz nieje dalsi block tak sa data nenasli
-                        return false;
-                    }
-                }
-            }
-            return false;
-            //Shake + shortenFile
 
-        }*/
+                                 }
+                                 //cant join brothers -> write back to file
+                                 if (block.ValidRecordsCount == 0) //cant be merged with brother (due to brothers having records in OF file)
+                                 {
+                                     AddToEmptyBlock(node.Index, block, true); ///block will write itself back to file in here
+                                     node.Index = -1;
+                                     return true;
+                                 }
+                                 else // cant be mergerged with brother (due to more records than BF)
+                                 {
+                                     WriteBackToFile(node.Index, block, true);
+                                     return true;
+                                 }
 
+                             }
+                             else
+                             {
+                                 //can merge upwards
+                                 var fakeBlock = new Block<T>(BlockFactor);
+                                 ShortenBranch(node, block, brotherNode, fakeBlock);
+                                 return true;
+                             }
+                         }
+                         //ak nie je brat alebo nemozu byt spojeni tak vymazala som + skratila som node
+                         if (node.CountOfRecords == 0 && block.OfindexNext == -1)
+                         {
+                             AddToEmptyBlock(node.Index, block, true);
+                             //ShortenFileMain(node);
+                             node.Index = -1;
+                             //zapisuje sa block do file v tejto metode
+                             //skratim od konca
+                             //ShortenFile(node);
+                             return true;
+                         }
+                         else //not merged with brother but still some records left
+                         {
+                             WriteBackToFile(node.Index, block, true);
+                             //Shake(node);
+                             return true;
+                         }
+                         //moze nastat situacia ze treba striasat
+                         Shake(node);
+                         //shortenFile(preplnujuci)
+                         //ShortenFile(false);
+                     }
+                 }
+                 //nachadza sa v OF
+
+                 if (block.OfindexNext != -1)
+                 {
+                     while (true)
+                     {
+                         var pom = block.OfindexNext;
+                         block = ReadBlockFromFile(block.OfindexNext, false);
+                         for (int i = 0; i < block.ValidRecordsCount; i++)
+                         {
+                             if (block.Records[i].MyEquals(data))
+                             {
+                                 if (!block.Remove(data))
+                                 {
+                                     Trace.WriteLine("Error - data cannot be removed.");
+                                     return false;
+                                 }
+                                 else
+                                 {
+                                     node.CountOfRecords--;
+                                     if (block.ValidRecordsCount == 0)
+                                     {
+                                         if (FileOverflow.Length - BlockSizeOF == pom)
+                                         {
+                                             FileOverflow.SetLength(File.Length - BlockSizeOF);
+
+                                             //TODO: skontrolovat aj ten pred
+                                         }
+                                         else
+                                         {
+                                             AddToEmptyBlock(pom, block, false);
+                                             return true;
+                                         }
+                                     }
+                                     Trace.WriteLine("Data removed from overflow file." + data.ToString());
+                                     WriteBackToFile(pom, block, false);
+                                 }
+
+                                 //kontrola, start with index from node
+                                 //Shake(node);
+
+
+                                 //WriteBackToFile(pom, block, false);
+                                 return true;
+                             }
+                         }
+                         if (block.OfindexNext == -1)
+                         {
+                             //uz nieje dalsi block tak sa data nenasli
+                             return false;
+                         }
+                     }
+                 }
+                 return false;
+                 //Shake + shortenFile
+
+             }*/
+        }
         public bool RemoveNew(T data) 
         {
             int level = -1;
@@ -1075,7 +1072,7 @@ namespace Dynamic_Hash.Hashing
                                 node.Index = -1;
                             }   
                         }
-                                                
+                        Shake(node);                        
                         //strasenie
                         return true;
                     }
@@ -1115,7 +1112,7 @@ namespace Dynamic_Hash.Hashing
                             this.AddToEmptyBlock(node.Index, block, true);
                         }
                     }
-
+                    Shake(node);
                     //strasenie
                     return true;
 
@@ -1140,7 +1137,8 @@ namespace Dynamic_Hash.Hashing
                         node.CountOfRecords--;
 
                         WriteBackToFile(index, blockOF, false);
-                        //strasenie
+                        
+                        Shake(node);
                         //uvolnenie file OF
                         return true;
                     }
@@ -1336,30 +1334,128 @@ namespace Dynamic_Hash.Hashing
             validsum += block.ValidRecordsCount;
             fullsize += block.BlockFactor;
 
-            if (block.OfindexNext != -1)
+            if (block.OfindexNext == -1)
             {
-                while (true)
+                return;
+            }
+
+            while (block.OfindexNext != -1)
+            {
+                indexes.Add(block.OfindexNext);
+                block = ReadBlockFromFile(block.OfindexNext, false);
+                blocks.Add(block);
+                validsum += block.ValidRecordsCount;
+                fullsize += block.BlockFactor;
+            }
+
+            var result = fullsize - validsum; //if its more or equals as BFOVERFLOW - one block can be emptied from OF
+
+
+            var toShuffle = block.ValidRecordsCount; //one block needs to be freed so all data from last block needs to e reshufled
+            var shuffleCounter = 0;
+
+            if (result < BlockFactorOverflow)
+            {
+                return;
+            }
+
+            List<T> listToReinsert = new List<T>();
+
+            for (int i = 0; i < toShuffle; i++)
+            {
+                listToReinsert.Add(block.Records[i]);
+                block.Remove(block.Records[i]);
+            }
+
+
+            //pridanie do prazdneho zretazenia blokov
+            //predchodcovi vymazat referenciu
+            WriteBackToFile(indexes[indexes.Count-1], block, false); //last one is empty
+            blocks.RemoveAt(blocks.Count - 1);
+            indexes.RemoveAt(indexes.Count - 1);
+
+            if (listToReinsert.Count > 0)
+            {
+                while (blocks[0].ValidRecordsCount < BlockFactor) //najprv do node v mainfile
                 {
-                    indexes.Add(block.OfindexNext);
-                    block = ReadBlockFromFile(block.OfindexNext, false);
-                    blocks.Add(block);
-                    validsum += block.ValidRecordsCount;
-                    fullsize += block.BlockFactor;
-                    countOFblocks++;
-                    if (block.OfindexNext == -1)
-                    {
-                        break;
-                    }
+                    blocks[0].Insert(listToReinsert[0]);
+                    listToReinsert.RemoveAt(0);
                 }
 
-                var result = fullsize - validsum;
+                WriteBackToFile(indexes[0], blocks[0], true);
+                blocks.RemoveAt(0);
+                indexes.RemoveAt(0);
 
-                var toShuffle = result - (BlockFactorOverflow - block.ValidRecordsCount); //how many records need to be removed to archieve one block removal from OF 
-                var shuffleCounter = 0;
-                //result rata aj s poslednym blokom - jeho volne miesto treba odratat
-                //result -= BlockFactorOverflow - block.ValidRecordsCount;
+                if (listToReinsert.Count == 0)
+                {
+                    return;
+                }
 
-                if (result >= BlockFactorOverflow) //usetri jeden block v OF file, mozem posuvat
+                var count = blocks.Count;
+                for (int i = 0; i < count; i++)
+                {
+                    while (blocks[0].ValidRecordsCount < BlockFactorOverflow)
+                    {
+                        blocks[0].Insert(listToReinsert[0]);
+                        listToReinsert.RemoveAt(0);
+
+                    }
+
+                    WriteBackToFile(indexes[0], blocks[0], false);
+                    blocks.RemoveAt(0);
+                    indexes.RemoveAt(0);
+
+                    if (listToReinsert.Count == 0)
+                    {
+                        return;
+                    }
+                }
+                return;
+            }
+
+
+
+/*
+            while (blocks[0].ValidRecordsCount < BlockFactor)
+            {
+                blocks[0].Insert(listToReinsert[0]);
+                listToReinsert.RemoveAt(0);
+            }
+
+            WriteBackToFile(indexes[0], blocks[0], true);
+
+            while (listToReinsert.Count > 0)
+            {
+                for (int i = 1; i < blocks.Count; i++)
+                {
+                    while (blocks[i].ValidRecordsCount < BlockFactorOverflow)
+                    {
+                        blocks[i].Insert(listToReinsert[0]);
+                        listToReinsert.RemoveAt(0);
+
+                        WriteBackToFile(indexes[i], blocks[i], false);
+                        if (listToReinsert.Count == 0)
+                        {
+                            if (i != (blocks.Count - 1))
+                            {
+                                WriteBackToFile(indexes[indexes.Count - 1], blocks[blocks.Count - 1], false);
+                            }
+
+                            return;
+                            //write back the last block with changed index
+
+
+                        }
+                    }
+
+                }
+
+            }
+
+
+
+
+            if (result >= BlockFactorOverflow) //usetri jeden block v OF file, mozem posuvat
                 {
                     //block.Records -> move from the begining of main file
                     List<T> listToReinsert = new List<T>();
@@ -1473,7 +1569,7 @@ namespace Dynamic_Hash.Hashing
                         }
                     }
                 }
-            }
+            */
 
         }
 

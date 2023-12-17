@@ -26,8 +26,8 @@ namespace QuadTree.GeoSystem
 
         public GeoApp(MyQuadTree area) 
         {
-            hashProperties = new DynamicHashing<Property>("Properties","OFProperties", 2, 5, 3);
-            hashLands = new DynamicHashing<PlotOfLand>("Lands","OFLands", 2, 5, 3);
+            hashProperties = new DynamicHashing<Property>("Properties","OFProperties", 3, 3, 1);
+            hashLands = new DynamicHashing<PlotOfLand>("Lands","OFLands", 3,3,1);
             _area = area;
             //seed
         }
