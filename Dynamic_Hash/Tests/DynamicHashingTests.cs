@@ -61,7 +61,7 @@ namespace Dynamic_Hash.Tests
             {
                 int insertIndex = random.Next(availableObjects.Count);
                 Property insertData = availableObjects[insertIndex];
-                if (insertData.RegisterNumber.Equals(161))
+                if (insertData.RegisterNumber.Equals(76) || insertData.RegisterNumber.Equals(87))
                 {
                     var stop = 0;
                 }
@@ -152,9 +152,9 @@ namespace Dynamic_Hash.Tests
             int insertIndex = random.Next(availableObjects.Count);
             Property insertData = availableObjects[insertIndex];
 
-            if (insertData.RegisterNumber.Equals(161))
+            if (insertData.RegisterNumber.Equals(76) || insertData.RegisterNumber.Equals(87))
             {
-                var stop=0;
+                var stop = 0;
             }
 
             dynHash.Insert(insertData);
@@ -222,6 +222,10 @@ namespace Dynamic_Hash.Tests
             int removeIndex = random.Next(usedKeys.Count);
             Property removeData = usedKeys[removeIndex];
 
+            if (removeData.RegisterNumber.Equals(99))
+            {
+                var stop = 0;
+            }
             if (dynHash.RemoveNew(removeData))
             {
                 var data = dynHash.Find(removeData);
