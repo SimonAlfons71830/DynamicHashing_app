@@ -788,7 +788,7 @@ namespace QuadTree.UI
                     if (_app.RemoveProp((int)regNumb))
                     {
 
-                        if (_app.RemoveObj(new Property((int)regNumb, "", ((startPos.Item1, startPos.Item2), (endPos.Item1, endPos.Item2)), lands: null)))
+                        if (_app.RemoveObj(new PropToQuad((int)regNumb, ((startPos.Item1, startPos.Item2), (endPos.Item1, endPos.Item2)))))
                         {
                             //remove from grid
                             dataGridEditDelete.Rows.Remove(selectedRow);
@@ -803,7 +803,7 @@ namespace QuadTree.UI
 
                     if (_app.RemoveLand((int)regNumb))
                     {
-                        if (_app.RemoveObj(new PlotOfLand((int)regNumb, "", ((startPos.Item1, startPos.Item2), (endPos.Item1, endPos.Item2)), properties: null)))
+                        if (_app.RemoveObj(new PlotToQuad((int)regNumb, ((startPos.Item1, startPos.Item2), (endPos.Item1, endPos.Item2)))))
                         {
                             //removefrom grid
                             dataGridEditDelete.Rows.Remove(selectedRow);
