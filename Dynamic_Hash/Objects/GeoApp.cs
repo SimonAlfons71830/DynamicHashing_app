@@ -27,8 +27,8 @@ namespace QuadTree.GeoSystem
 
         public GeoApp(MyQuadTree area) 
         {
-            hashProperties = new DynamicHashing<Property>("Properties","OFProperties", 2,2,1);
-            hashLands = new DynamicHashing<PlotOfLand>("Lands","OFLands", 2,2,1);
+            hashProperties = new DynamicHashing<Property>("Properties","OFProperties", 2,2,2);
+            hashLands = new DynamicHashing<PlotOfLand>("Lands","OFLands", 2,2,2);
             _area = area;
             //seed
         }
@@ -95,44 +95,46 @@ namespace QuadTree.GeoSystem
 
             var listOfRegNumbersProperties = new List<int>();
 
-            //find each land in file and edit its record list to add register number of property if possible
-            foreach (var item in listForProp)
+            if (!import)
             {
-                //najst item vo file  - pridat mu do listu tento land, zapisat ho naspat
-                var property  = new Property();
-                property.RegisterNumber = item.RegisterNumber;
-                (Block<Property> block, int i, int index, int file) edit = hashProperties.AddDataToRecords(property);
-
-                if (edit.block.ValidRecordsCount < 5)
+                //find each land in file and edit its record list to add register number of property if possible
+                foreach (var item in listForProp)
                 {
-                    var prop = edit.block.Records[edit.i];
-                    for (int i = 0; i < prop.Lands.Count; i++)
+                    //najst item vo file  - pridat mu do listu tento land, zapisat ho naspat
+                    var property = new Property();
+                    property.RegisterNumber = item.RegisterNumber;
+                    (Block<Property> block, int i, int index, int file) edit = hashProperties.AddDataToRecords(property);
+
+                    if (edit.block.ValidRecordsCount < 5)
                     {
-                        if (prop.Lands[i] == -1)
+                        var prop = edit.block.Records[edit.i];
+                        for (int i = 0; i < prop.Lands.Count; i++)
                         {
-                            prop.Lands[i] = registerNumber;
-                            //if it is here something changed in the block -> need to write it to file
-                            hashProperties.WriteBackToFile(edit.index, edit.block, edit.file == 1 ? true : false);
-                            break;
+                            if (prop.Lands[i] == -1)
+                            {
+                                prop.Lands[i] = registerNumber;
+                                //if it is here something changed in the block -> need to write it to file
+                                hashProperties.WriteBackToFile(edit.index, edit.block, edit.file == 1 ? true : false);
+                                break;
+                            }
                         }
+
                     }
 
                 }
 
-            }
 
-
-            foreach (var item in listForProp)
-            {
-
-                if (listOfRegNumbersProperties.Count == 5)
+                foreach (var item in listForProp)
                 {
-                    break;
-                }
-                //pre nehnutelnost evidujem max 6 parciel (registracnych cisel)
-                listOfRegNumbersProperties.Add(item.RegisterNumber);
-            }
 
+                    if (listOfRegNumbersProperties.Count == 5)
+                    {
+                        break;
+                    }
+                    //pre nehnutelnost evidujem max 6 parciel (registracnych cisel)
+                    listOfRegNumbersProperties.Add(item.RegisterNumber);
+                }
+            }
             var plot = new PlotOfLand(registerNumber, description, coordinates, listOfRegNumbersProperties);
 
             this._area.Insert(new PlotToQuad(registerNumber,coordinates));
@@ -219,14 +221,18 @@ namespace QuadTree.GeoSystem
                     
                     var land = findLand(listOfLands[i]); 
                     (Block<PlotOfLand> block, int i,int index,int file) edit =  hashLands.AddDataToRecords(land);
-                    for (int j = 0; j < edit.block.Records[i].Properties.Count; j++)
+                    for (int j = 0; j < edit.block.Records.Count; j++)
                     {
-                        if (edit.block.Records[i].Properties[j] == registerNumber)
+                        for (int k = 0; k < edit.block.Records[j].Properties.Count; k++)
                         {
-                            edit.block.Records[i].Properties[j] = -1;
-                            hashLands.WriteBackToFile(edit.index,edit.block,edit.file == 1 ? true  : false);
-                            break;
+                            if (edit.block.Records[j].Properties[k] == registerNumber)
+                            {
+                                edit.block.Records[j].Properties[k] = -1;
+                                hashLands.WriteBackToFile(edit.index, edit.block, edit.file == 1 ? true : false);
+                                break;
+                            }
                         }
+                        
                     }
                 }
             }
@@ -246,14 +252,18 @@ namespace QuadTree.GeoSystem
 
                     var property = findProperty(listOfProperties[i]);
                     (Block<Property> block, int i, int index, int file) edit = hashProperties.AddDataToRecords(property);
-                    for (int j = 0; j < edit.block.Records[i].Lands.Count; j++)
+                    for (int j = 0; j < edit.block.Records.Count; j++)
                     {
-                        if (edit.block.Records[i].Lands[j] == registerNumber)
+                        for (int k = 0; k < edit.block.Records[j].Lands.Count; k++)
                         {
-                            edit.block.Records[i].Lands[j] = -1;
-                            hashProperties.WriteBackToFile(edit.index, edit.block, edit.file == 1 ? true : false);
-                            break;
+                            if (edit.block.Records[j].Lands[k] == registerNumber)
+                            {
+                                edit.block.Records[j].Lands[k] = -1;
+                                hashProperties.WriteBackToFile(edit.index, edit.block, edit.file == 1 ? true : false);
+                                break;
+                            }
                         }
+                       
                     }
                 }
             }
@@ -638,26 +648,24 @@ namespace QuadTree.GeoSystem
 
                 foreach (var obj in AllObj)
                 {
-                    if (obj is Property)
+                    if (obj is PropToQuad)
                     {
                         //LongHem = (Longitude >= 0) ? 'E' : 'W';
                         //LatHem = (Latitude >= 0) ? 'N' : 'S';
 
-                        writerProp.WriteLine(obj.GetType().Name + ";" + ((Property)obj).RegisterNumber + ";" +
-                            ((Property)obj).Coordinates.Item1.LongitudeStart + ";" +
-                            ((Property)obj).Coordinates.Item1.LatitudeStart + ";" +
-                            ((Property)obj).Coordinates.Item2.LongitudeEnd + ";" +
-                            ((Property)obj).Coordinates.Item2.LatitudeEnd + ";" +
-                            ((Property)obj).Description);
+                        writerProp.WriteLine(obj.GetType().Name + ";" + ((PropToQuad)obj).RegisterNumber + ";" +
+                            ((PropToQuad)obj).Coordinates.Item1.LongitudeStart + ";" +
+                            ((PropToQuad)obj).Coordinates.Item1.LatitudeStart + ";" +
+                            ((PropToQuad)obj).Coordinates.Item2.LongitudeEnd + ";" +
+                            ((PropToQuad)obj).Coordinates.Item2.LatitudeEnd );
                     }
                     else
                     {
-                        writerPlots.WriteLine(obj.GetType().Name + ";" + ((PlotOfLand)obj).RegisterNumber + ";" +
-                            ((PlotOfLand)obj).Coordinates.Item1.LongitudeStart + ";" +
-                            ((PlotOfLand)obj).Coordinates.Item1.LatitudeStart + ";" +
-                            ((PlotOfLand)obj).Coordinates.Item2.LongitudeEnd + ";" +
-                            ((PlotOfLand)obj).Coordinates.Item2.LatitudeEnd + ";" +
-                            ((PlotOfLand)obj).Description);
+                        writerPlots.WriteLine(obj.GetType().Name + ";" + ((PlotToQuad)obj).RegisterNumber + ";" +
+                            ((PlotToQuad)obj).Coordinates.Item1.LongitudeStart + ";" +
+                            ((PlotToQuad)obj).Coordinates.Item1.LatitudeStart + ";" +
+                            ((PlotToQuad)obj).Coordinates.Item2.LongitudeEnd + ";" +
+                            ((PlotToQuad)obj).Coordinates.Item2.LatitudeEnd );
                     }
                 }
 
@@ -688,12 +696,12 @@ namespace QuadTree.GeoSystem
                 string line = "";
                 while ((line = reader.ReadLine()) != null)
                 {
-                    if (line.Contains("Property"))
+                    if (line.Contains("PropToQuad"))
                     {
                         // Split the line by semicolon to extract data
                         string[] parts = line.Split(';');
 
-                        if (parts.Length >= 7)
+                        if (parts.Length >= 6)
                         {
                             //Property;3;79E;491N;description
                             // Parse the relevant data from the line
@@ -718,9 +726,9 @@ namespace QuadTree.GeoSystem
                             string numericPartYE = new string(rawCoordYE.Reverse().SkipWhile(char.IsLetter).Reverse().ToArray());
                             double coordYE = double.Parse(numericPartYE);
 
-                            string description = parts[6];
+                            
 
-                            AddProperty(id, description,((coordX,coordY),(coordXE,coordYE)),true);
+                            AddProperty(id,"",((coordX,coordY),(coordXE,coordYE)),true);
                         }
                     }
                 }
@@ -746,12 +754,12 @@ namespace QuadTree.GeoSystem
                 string line = "";
                 while ((line = reader.ReadLine()) != null)
                 {
-                    if (line.Contains("PlotOfLand"))
+                    if (line.Contains("PlotToQuad"))
                     {
                         // Split the line by semicolon to extract data
                         string[] parts = line.Split(';');
 
-                        if (parts.Length >= 7)
+                        if (parts.Length >= 6)
                         {
                             //PlotOfLand;25;113E;261N;202E;350N;description
                             int id = int.Parse(parts[1]);
@@ -772,9 +780,8 @@ namespace QuadTree.GeoSystem
                             string numericPartEndY = new string(rawCoordEndY.Reverse().SkipWhile(char.IsLetter).Reverse().ToArray());
                             double coordEndY = double.Parse(numericPartEndY);
 
-                            string description = parts[6];
 
-                            AddPlot(id, description, ((coordStartX,coordStartY),(coordEndX,coordEndY)), true);
+                            AddPlot(id, " ", ((coordStartX,coordStartY),(coordEndX,coordEndY)), true);
                         }
                     }
                 }
