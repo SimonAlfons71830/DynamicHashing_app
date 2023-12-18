@@ -198,7 +198,6 @@ namespace QuadTree.UI
         //standalone search
         private void button2_Click_1(object sender, EventArgs e)
         {
-
             propInfo.Clear();
 
             if (rbProp.Checked)
@@ -446,13 +445,13 @@ namespace QuadTree.UI
                 (decimal)originalPLOTXCoordinateEnd != endPosEditPlotX.Value ||
                 (decimal)originalPLOTYCoordinateEnd != endPosEditPlotY.Value;
 
-            var boolpom = int.TryParse(registerNumberPlot_label.Text, out int rn);
+            //var boolpom = int.TryParse(registerNumberPlot_label.Text, out int rn);
 
             bool attrChanged =
                 originalPLOTDescription != descEditPlot.Text;
 
             var changed = this._app.EditObject(originalPlot,
-               new PlotOfLand(rn, descEditPlot.Text,
+               new PlotOfLand(originalPlot.RegisterNumber, descEditPlot.Text,
                (((double)startPosEditPlotX.Value, (double)startPosEditPlotY.Value),
                ((double)endPosEditPlotX.Value, (double)endPosEditPlotY.Value)), properties: null),
                keyAttrChanged);
@@ -462,7 +461,7 @@ namespace QuadTree.UI
                 MessageBox.Show("Attributes changed.");
                 dataGridEditDelete.Rows.Remove(selectedRowProp);
                 DataRow newRow = dataWithRangeSearch.NewRow();
-                newRow[0] = rn;
+                newRow[0] = originalPlot.RegisterNumber;
                 newRow[1] = descEditPlot.Text;
                 newRow[2] = "Property";
                 newRow[3] = ((double, double))(startPosEditPlotX.Value, startPosEditPlotY.Value);
@@ -525,12 +524,12 @@ namespace QuadTree.UI
                 (decimal)originalPROPXCoordinateEnd != editPropEndX.Value ||
                 (decimal)originalPROPYCoordinateEnd != editPropEndY.Value;
 
-            var boolpom = int.TryParse(registerNumberProp_label.Text, out int rn);
+            //var boolpom = int.TryParse(registerNumberProp_label.Text, out int rn);
 
             bool attrChanged = originalPROPDescription != descBoxEditProp.Text;
 
             var changed = this._app.EditObject(originalProp,
-               new Property(rn, descBoxEditProp.Text,
+               new Property(originalProp.RegisterNumber, descBoxEditProp.Text,
                (((double)editPropStartX.Value, (double)editPropStartY.Value),
                ((double)editPropEndX.Value, (double)editPropEndY.Value)), lands: null),
                keyAttrChanged);
@@ -540,7 +539,7 @@ namespace QuadTree.UI
                 MessageBox.Show("Attributes changed.");
                 dataGridEditDelete.Rows.Remove(selectedRowProp);
                 DataRow newRow = dataWithRangeSearch.NewRow();
-                newRow[0] = rn;
+                newRow[0] = originalProp.RegisterNumber;
                 newRow[1] = descBoxEditProp.Text;
                 newRow[2] = "Property";
                 newRow[3] = ((double, double))(editPropStartX.Value, editPropStartY.Value);
@@ -716,6 +715,7 @@ namespace QuadTree.UI
 
                     //originalProp = (Property)_app.PickToEdit(new Property((int)regNumb, (string)desc, (new Coordinates(startPos.Item1, startPos.Item2, 0), new Coordinates(endPos.Item1, endPos.Item2, 0)), null));
                     originalProp = this._app.PickAttrProp(new Property((int)regNumb, "", ((startPos.Item1, startPos.Item2), (endPos.Item1, endPos.Item2)), lands: null));
+
 
                     if (originalProp != null)
                     {

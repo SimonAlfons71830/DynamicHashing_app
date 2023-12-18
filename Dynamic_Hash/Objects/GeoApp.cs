@@ -12,6 +12,7 @@ using System.Linq;
 using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Rebar;
 
 namespace QuadTree.GeoSystem
 {
@@ -35,14 +36,17 @@ namespace QuadTree.GeoSystem
         public void AddProperty(int registerNumber, string description, ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates, bool import)
         {
             var list = this.FindInterval(coordinates);
-            var listForProp = list.OfType<PlotOfLand>().ToList();
+            var listForProp = list.OfType<PlotToQuad>().ToList();
 
             var listOfRegNumbersLands = new List<int>();
 
             //find each land in file and edit its record list to add register number of property if possible
             foreach (var item in listForProp)
             {
-                (Block<PlotOfLand> block, int i, int index, int file) edit =  hashLands.AddDataToRecords(item);
+                //najst item vo file  - pridat mu do listu tuto property, zapisat ho naspat
+                var land = new PlotOfLand();
+                land.RegisterNumber = item.RegisterNumber;
+                (Block<PlotOfLand> block, int i, int index, int file) edit =  hashLands.AddDataToRecords(land);
 
                 if (edit.block.ValidRecordsCount < 5)
                 {
@@ -57,33 +61,25 @@ namespace QuadTree.GeoSystem
                             break;
                         }
                     }
-                    
                 }
-
             }
 
 
             foreach (var item in listForProp) 
             {
-                //pre nehnutelnost evidujem max 6 parciel (registracnych cisel)
-                listOfRegNumbersLands.Add(item.RegisterNumber);
-                for (int i = 0; i < item.Properties.Count; i++)
-                {
-                    if (item.Properties[i] == -1)
-                    {
-                        item.Properties[i] = registerNumber;
-                        break;
-                    }
-                }
                 if (listOfRegNumbersLands.Count == 6)
                 {
                     break;
                 }
+                //pre nehnutelnost evidujem max 6 parciel (registracnych cisel)
+                listOfRegNumbersLands.Add(item.RegisterNumber);
+                
             }
+
 
             var prop = new Property(registerNumber, description, coordinates, listOfRegNumbersLands);
 
-            this._area.Insert(prop);
+            this._area.Insert(new PropToQuad(registerNumber,coordinates));
 
             if (!import)
             {
@@ -95,14 +91,17 @@ namespace QuadTree.GeoSystem
         public void AddPlot(int registerNumber, string description, ((double LongitudeStart, double LatitudeStart), (double LongitudeEnd, double LatitudeEnd)) coordinates, bool import) 
         {
             var list = this.FindInterval(coordinates);
-            var listForProp = list.OfType<Property>().ToList();
+            var listForProp = list.OfType<PropToQuad>().ToList();
 
             var listOfRegNumbersProperties = new List<int>();
 
             //find each land in file and edit its record list to add register number of property if possible
             foreach (var item in listForProp)
             {
-                (Block<Property> block, int i, int index, int file) edit = hashProperties.AddDataToRecords(item);
+                //najst item vo file  - pridat mu do listu tento land, zapisat ho naspat
+                var property  = new Property();
+                property.RegisterNumber = item.RegisterNumber;
+                (Block<Property> block, int i, int index, int file) edit = hashProperties.AddDataToRecords(property);
 
                 if (edit.block.ValidRecordsCount < 5)
                 {
@@ -125,35 +124,22 @@ namespace QuadTree.GeoSystem
 
             foreach (var item in listForProp)
             {
-                //pre nehnutelnost evidujem max 6 parciel (registracnych cisel)
-                listOfRegNumbersProperties.Add(item.RegisterNumber);
-                for (int i = 0; i < item.Lands.Count; i++)
-                {
-                    if (item.Lands[i] == -1)
-                    {
-                        item.Lands[i] = registerNumber;
-                        break;
-                    }
-                }
 
                 if (listOfRegNumbersProperties.Count == 5)
                 {
                     break;
                 }
+                //pre nehnutelnost evidujem max 6 parciel (registracnych cisel)
+                listOfRegNumbersProperties.Add(item.RegisterNumber);
             }
 
             var plot = new PlotOfLand(registerNumber, description, coordinates, listOfRegNumbersProperties);
 
-            this._area.Insert(plot);
+            this._area.Insert(new PlotToQuad(registerNumber,coordinates));
             if (!import)
             {
                 this.hashLands.Insert(plot);
             }
-        }
-
-        public void ClearContent()
-        {
-            
         }
 
         public bool RemoveObj(Polygon obj) 
@@ -166,37 +152,28 @@ namespace QuadTree.GeoSystem
 
             //ak sa podari vymazat obj ak je to prop tak najdem vsetky ploty ktore sa nachadzaju v ramci 
 
-            if (obj is Property)
+            if (obj is PropToQuad)
             {
                 //sear for plots
                 //var list = FindInterval((new Coordinates(((Property)obj)._borders.startP._x, ((Property)obj)._borders.startP._y, 0), new Coordinates(((Property)obj)._borders.endP._x, ((Property)obj)._borders.endP._y, 0)));
                 var list = FindInterval(((obj._borders.Item1.LongitudeStart, obj._borders.Item1.LatitudeStart), (obj._borders.Item2.LongitudeEnd, obj._borders.Item2.LatitudeEnd)));
 
-                var potentialObjList = list.OfType<Property>().ToList();
-                Property obj_to_rem = null;
+                var potentialObjList = list.OfType<PropToQuad>().ToList();
+                PropToQuad obj_to_rem = null;
 
                 foreach (var potObj in potentialObjList)
                 {
-                    if (((Property)potObj).Equals(((Property)obj)))
+                    if (((PropToQuad)potObj).Equals(((PropToQuad)obj)))
                     {
-                        obj_to_rem = potObj;
-                        break;
+                        return _area.RemoveObject(obj);
+                        
                     }
                 }
-
-                if (obj_to_rem != null)
-                {
-                    //list of plots interfering with obj coordinates
-                    var plotList = list.OfType<PlotOfLand>().ToList();
-                    foreach (var item in plotList)
-                    {
-                        ((PlotOfLand)item).Properties.Remove(obj_to_rem.RegisterNumber);
-                    }
-                    //now its possible to remove
-                    return _area.RemoveObject(obj);
+                return false;
 
 
-                }
+
+
             }
             else
             {
@@ -205,40 +182,20 @@ namespace QuadTree.GeoSystem
                 var list = FindInterval(((obj._borders.Item1.LongitudeStart, obj._borders.Item1.LatitudeStart), (obj._borders.Item2.LongitudeEnd, obj._borders.Item2.LatitudeEnd)));
 
 
-                var potentialPlotList = list.OfType<PlotOfLand>().ToList();
-                PlotOfLand plot_to_rem = null;
+                var potentialPlotList = list.OfType<PlotToQuad>().ToList();
+                PlotToQuad plot_to_rem = null;
 
                 foreach (var potPlot in potentialPlotList)
                 {
-                    if (((PlotOfLand)potPlot).Equals(((PlotOfLand)obj)))
+                    if (((PlotToQuad)potPlot).Equals(((PlotToQuad)obj)))
                     {
-                        plot_to_rem = potPlot;
-                        break;
+                        return _area.RemoveObject(obj);
+                        
                     }
                 }
-
-
-                if (plot_to_rem != null)
-                {
-
-                    //list of properties that plot needs to be removed
-                    var propList = list.OfType<Property>().ToList();
-
-                    foreach (var item in propList)
-                    {
-                        ((Property)item).Lands.Remove(plot_to_rem.RegisterNumber);
-                    }
-
-                    return _area.RemoveObject(obj);
-
-                }
-                else
-                {
-                    var debug = 0;
-                }
+                return false;
 
             }
-            return false;
             
         }
 
@@ -442,25 +399,29 @@ namespace QuadTree.GeoSystem
         {
             if (refObj is Property && newObj is Property)
             {
-                var regN = ((Property)newObj)._registerNumber;
+                var pomInQuad = new PropToQuad(((Property)refObj).RegisterNumber, ((Property)refObj).Coordinates);
+
+                var regN = ((Property)newObj).RegisterNumber;
                 var desc = ((Property)newObj).Description;
-                if (this.RemoveObj(refObj)) //_area.RemoveObject(refObj)
+                if (this.RemoveObj(pomInQuad)) 
                 {
-                    var list = this.FindInterval(((Property)refObj)._borders);
-                    var listToChange = list.OfType<PlotOfLand>().ToList();
+                    var list = this.FindInterval(((Property)refObj).Coordinates);
+                    
+                    var listToChange = list.OfType<PlotToQuad>().ToList();
 
                     var listToChangeInts = hashProperties.Find((Property)refObj).Lands;
                     hashProperties.RemoveNew((Property)refObj);
                     //from each list record in list remove register number
                     foreach (var land in listToChange) 
                     {
-                        
+                        var pomLand = new PlotOfLand();
+                        pomLand.RegisterNumber = land.RegisterNumber;
                         //var hashLand = hashLands.Find((PlotOfLand)land);
-                       (Block<PlotOfLand> block, int i, int address, int file) edit = hashLands.AddDataToRecords(land);
+                       (Block<PlotOfLand> block, int i, int address, int file) edit = hashLands.AddDataToRecords(pomLand);
                         var landFromBlock = edit.block.Records[edit.i];
                         for (int i = 0; i < landFromBlock.Properties.Count; i++)
                         {
-                            if (landFromBlock.Properties[i] == ((Property)refObj)._registerNumber)
+                            if (landFromBlock.Properties[i] == ((Property)refObj).RegisterNumber)
                             {
                                 landFromBlock.Properties[i] = -1;
                                 hashLands.WriteBackToFile(edit.address, edit.block, edit.file == 1 ? true : false);
@@ -470,32 +431,34 @@ namespace QuadTree.GeoSystem
 
                     }
 
-
                     this.AddProperty(regN,desc,((Property)newObj).Coordinates,false);
                 }
                 //((Property)refObj).Coordinates = (new Coordinates(x0, y0, 0), new Coordinates(xk, yk, 0));
             }
             else //is PLOT
             {
-                var regN = ((PlotOfLand)newObj)._registerNumber;
+                var pomInQuad = new PlotToQuad(((PlotOfLand)refObj).RegisterNumber, ((PlotOfLand)refObj).Coordinates);
+
+                var regN = ((PlotOfLand)newObj).RegisterNumber;
                 var desc = ((PlotOfLand)newObj).Description;
-                if (this.RemoveObj(refObj))//_area.RemoveObject(refObj)
+                if (this.RemoveObj(pomInQuad))//_area.RemoveObject(refObj)
                 {
                     var list = this.FindInterval(((PlotOfLand)refObj)._borders);
-                    var listToChange = list.OfType<Property>().ToList();
+                    var listToChange = list.OfType<PropToQuad>().ToList();
 
                     var listToChangeInts = hashLands.Find((PlotOfLand)refObj).Properties;
                     hashLands.RemoveNew((PlotOfLand)refObj);
                     //from each list record in list remove register number
                     foreach (var property in listToChange)
                     {
-
+                        var pomProp = new Property();
+                        pomProp.RegisterNumber = property.RegisterNumber;
                         //var hashLand = hashLands.Find((PlotOfLand)land);
-                        (Block<Property> block, int i, int address, int file) edit = hashProperties.AddDataToRecords(property);
+                        (Block<Property> block, int i, int address, int file) edit = hashProperties.AddDataToRecords(pomProp);
                         var propFromBlock = edit.block.Records[edit.i];
                         for (int i = 0; i < propFromBlock.Lands.Count; i++)
                         {
-                            if (propFromBlock.Lands[i] == ((PlotOfLand)refObj)._registerNumber)
+                            if (propFromBlock.Lands[i] == ((PlotOfLand)refObj).RegisterNumber)
                             {
                                 propFromBlock.Lands[i] = -1;
                                 hashProperties.WriteBackToFile(edit.address, edit.block, edit.file == 1 ? true : false);
@@ -541,8 +504,35 @@ namespace QuadTree.GeoSystem
         public bool EditObject(Polygon oldObj, Polygon newObj, bool keyAttr) 
         {
             //returns the reference to a object in structure
-            var _refObj = this._area.ShowObject(oldObj);
-
+            //var _refObj = this._area.ShowObject(oldObj);
+            if (oldObj is Property)
+            {
+                if (keyAttr)
+                {
+                    this.ChangeKeyAttr(((Property)oldObj), ((Property)newObj));
+                }
+                else
+                {
+                    this.ChangeNonKeyAttr(((Property)oldObj),
+                           ((Property)newObj).RegisterNumber, ((Property)newObj).Description);
+                }
+                return true;
+            }
+            else
+            {
+                if (keyAttr)
+                {
+                    this.ChangeKeyAttr(((PlotOfLand)oldObj), (PlotOfLand)newObj);
+                }
+                else 
+                { 
+                    this.ChangeNonKeyAttr(((PlotOfLand)oldObj),
+                            ((PlotOfLand)newObj).RegisterNumber, ((PlotOfLand)newObj).Description);
+                }
+                return true;
+            }
+            
+/*
 
             if (_refObj != null)
             {
@@ -581,26 +571,29 @@ namespace QuadTree.GeoSystem
             else
             {
                 return false;
-            }
+            }*/
 
 
 
 
         }
+        
 
         public Polygon PickToEdit(Polygon obj)
         {
-            return (Polygon)this._area.ShowObject(obj);
+            //return (Polygon)this._area.ShowObject(obj);
+            return this.hashLands.Find((PlotOfLand)obj);
         }
 
         public Property PickAttrProp(Property obj)
         {
-            Property _refProp = (Property)this._area.ShowObject(obj);
+            /*Property _refProp = (Property)this._area.ShowObject(obj);
 
             //just attributes for form
             Property pomProp = new Property(_refProp.RegisterNumber, _refProp.Description, _refProp.Coordinates, lands : null);
 
-            return pomProp;
+            return pomProp;*/
+            return this.hashProperties.Find(obj);
         }
 
         public PlotOfLand PickAttrPlot(PlotOfLand obj)
@@ -650,7 +643,7 @@ namespace QuadTree.GeoSystem
                         //LongHem = (Longitude >= 0) ? 'E' : 'W';
                         //LatHem = (Latitude >= 0) ? 'N' : 'S';
 
-                        writerProp.WriteLine(obj.GetType().Name + ";" + ((Property)obj)._registerNumber + ";" +
+                        writerProp.WriteLine(obj.GetType().Name + ";" + ((Property)obj).RegisterNumber + ";" +
                             ((Property)obj).Coordinates.Item1.LongitudeStart + ";" +
                             ((Property)obj).Coordinates.Item1.LatitudeStart + ";" +
                             ((Property)obj).Coordinates.Item2.LongitudeEnd + ";" +
